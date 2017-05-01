@@ -1,0 +1,91 @@
+\documentclass[xcolor=svgnames]{beamer}
+
+\usetheme{Boadilla}
+\useoutertheme[subsection=false]{smoothbars}
+\usefonttheme{serif}
+\usecolortheme{seagull} % dove fly seagull
+\useinnertheme{rounded}
+\usepackage{pifont}
+\usepackage{time}       % date and time
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}    % european characters
+% \usepackage{pgothic}
+\usepackage{yfonts}
+% \usepackage{courier}
+\usepackage{amssymb,amsmath}  % use mathematical symbols
+\usepackage{palatino}      % use palatino as the default font
+\usepackage{listings}   % insert python code into presentation
+\usepackage{multirow}
+\setbeamercovered{transparent}
+\setbeamertemplate{itemize subitem}[triangle]
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\tc}{\textcolor}
+\newcommand{\select}{$\leadsto~$}
+\newcommand{\fb}{\framebox}
+\def\ra{$\rightarrow$\,\,}
+\definecolor{cadet}{rgb}{0.33, 0.41, 0.47}
+\newcommand{\hi}[1]{{\color{cadet}\textsl{#1}}}
+\newcommand{\chacha}[1]{\centering{\scalebox{2}{\fontsize{12pt}{0pt}\normalfont{#1}}}}
+\newcommand{\chapter}[1]{\begin{frame}{}\chacha{#1}\end{frame}}
+\newcommand{\chapterDouble}[2]{\begin{frame}{}\chacha{#1}\\\medskip\chacha{#2}\end{frame}}
+\newcommand{\resetEnv}{
+  \colorlet{structure}{mystruct}
+  \beamertemplateshadingbackground{blue!5}{gray!10}
+  \beamertemplateshadingbackground{white}{white}
+}
+\usepackage{mathtools}
+\usepackage{xcolor}
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{keystroke}
+
+\definecolor{byzantium}{rgb}{0.44, 0.16, 0.39}
+\definecolor{ferrariRed}{rgb}{1.0, 0.11, 0.0}
+
+% tiny-scriptsize-footnotesize-small-normalsize-large-Large-LARGE-huge-Huge
+
+\begin{document}
+
+\title[VisIt Workshop]{\LARGE Parallel programming in Chapel}
+\author[]{{\large\sc Juan Zuniga}\\{\small juan.zuniga@usask.ca}\\\bigskip {\large\sc Alex
+    Razoumov}\\{\small alex.razoumov@westgrid.ca}}
+\date[May 2017]{\textcolor{byzantium}{\footnotesize slides and code examples at at ...}}
+\institute[]{\includegraphics[width=0.25\columnwidth]{./logos/ccLogo}
+  \hspace{.65cm}\includegraphics[width=0.35\columnwidth]{./logos/WG-Logo-Jan16}}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\section{Intro}
+\subsection{} % creates page markers at the top
+\input{intro}
+
+\section{Chapel base language}
+\subsection{} % creates page markers at the top
+
+\section{Task parallelism}
+\subsection{} % creates page markers at the top
+
+\section{Data parallelism}
+\subsection{} % creates page markers at the top
+
+\section{Advanced language features}
+\subsection{} % creates page markers at the top
+
+
+
+
+
+
+\end{document}
+
+(1) Juan will teach Chapel base language + task parallelism (language syntax and the compiler, the
+notions of locality and parallelism and how they are orthogonal concepts in Chapel, forall and coforall
+in abstract level)
+
+(2) Alex will teach Chapel data parallelism + advanced language features (revisiting the notion of
+locality, where in the hardware the tasks (or the different locales) are running, parallel data
+structures, domain maps, iterators, I/O files, modules and other packages?)
