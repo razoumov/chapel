@@ -1,6 +1,23 @@
+\newcommand{\tni}{\ensuremath{T^{(n)}_i}}
 \begin{frame}{}
-  \begin{itemize}\setlength{\itemsep}{3mm}
-    \item one
-    \item two
-  \end{itemize}
+  1D diffusion equation:
+  \[
+    {\partial T\over\partial t}=k{\partial^2 T\over\partial x^2}
+  \]
+
+  time derivative:
+  \[
+    {\partial\tni\over\partial t}\approx{\tni+T^{(n-1)}_i\over\Delta t}
+  \]
+
+  second-order spatial derivative:
+  \[
+    {\partial^2\tni\over\partial x^2}\approx{T^{(n)}_{i+1}-2T^{(n)}_i+T^{(n)}_{i-1}\over(\Delta x)^2}
+  \]
+
+  fully explicit finite-difference equation:
+  \[
+    T^{(n+1)}_i\approx T^{(n)}_i+{k\Delta t\over(\Delta x)^2}\left(T^{(n)}_{i+1}-2T^{(n)}_i+T^{(n)}_{i-1}\right)
+  \]
+
 \end{frame}
