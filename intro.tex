@@ -2,7 +2,7 @@
 \begin{frame}{}
   1D diffusion equation:
   \[
-    {\partial T\over\partial t}=k{\partial^2 T\over\partial x^2}
+    {\partial T(x,t)\over\partial t}=k{\partial^2 T\over\partial x^2}
   \]
 
   time derivative:
@@ -19,5 +19,12 @@
   \[
     T^{(n+1)}_i\approx T^{(n)}_i+{k\Delta t\over(\Delta x)^2}\left(T^{(n)}_{i+1}-2T^{(n)}_i+T^{(n)}_{i-1}\right)
   \]
+
+  Given the initial pulse
+  \[
+    T(x,0)=e^{-{\left[(x-0.5)\over 0.01\right]}^2}\quad\text{with }x\in[0,1],
+  \]
+
+  find the solution at time $t=1$ assuming periodic boundary conditions.
 
 \end{frame}
