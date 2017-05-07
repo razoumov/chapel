@@ -6,10 +6,11 @@
     \[
       {\partial T(x,y,t)\over\partial t}={\partial^2 T\over\partial x^2}+{\partial^2 T\over\partial y^2}
     \]
-    \item Discretize the solution $T(x,y,t)\approx T^{(n)}_{i,j}$ with $i=1,...,n$ and $j=1,...,n$
-    \item Imagine a metallic plate being constantly heated in one corner, for example $T^{(n)}_{1,1}=1$
-    \item Everywhere else the initial solution is $T^{(0)}_{i,j}=0$
-    \item Discretize the equation
+    {\footnotesize
+      \item Discretize the solution $T(x,y,t)\approx T^{(n)}_{i,j}$ with $i=1,...,n$ and $j=1,...,n$
+      \item Imagine a metallic plate being constantly heated in one corner, e.g. $T^{(n)}_{1,1}=1$
+      \item Everywhere else the initial solution is $T^{(0)}_{i,j}=0$}
+    \item Discretize the equation with forward Euler time stepping
     \[
       {T^{(n+1)}_{i,j}-\tnij\over\Delta t}=
       {T^{(n)}_{i+1,j}-2T^{(n)}_{i,j}+T^{(n)}_{i-1,j}\over(\Delta x)^2}+
