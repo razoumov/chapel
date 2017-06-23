@@ -59,45 +59,12 @@
   \titlepage
 \end{frame}
 
-\section{Intro}
-\subsection{} % creates page markers at the top
 \input{intro}
-
-\section{Chapel base language} % Juan's section
-\chapter{Chapel base language}
-\subsection{} % creates page markers at the top
-
-\section{Task parallelism} % Juan's section
-\chapter{Task parallelism}
-\subsection{} % creates page markers at the top
-
-\section{Data parallelism}
-\chapter{Data parallelism}
-\subsection{} % creates page markers at the top
-\input{data}
-
-\section{Advanced language features}
-\chapter{Advanced language features}
-\subsection{} % creates page markers at the top
-\input{advanced}
-
-\section{Summary}
-\subsection{} % creates page markers at the top
+\input{base}\input{task} % Juan's sections
+\input{data}\input{advanced} % Alex's sections
 \input{summary}
 
-
-
-
-
 \end{document}
-
-(1) Juan will teach Chapel base language + task parallelism (language syntax and the compiler, the
-notions of locality and parallelism and how they are orthogonal concepts in Chapel, forall and coforall
-in abstract level)
-
-(2) Alex will teach Chapel data parallelism + advanced language features (revisiting the notion of
-locality, where in the hardware the tasks (or the different locales) are running, parallel data
-structures, domain maps, iterators, I/O files, modules and other packages?)
 
 Use the 2D diffusion problem to show all Chapel features:
 
