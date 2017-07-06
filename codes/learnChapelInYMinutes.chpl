@@ -1,4 +1,4 @@
-use Math;
+use Math; // http://chapel.cray.com/docs/1.14/modules/standard/Math.html
 
 // Section: basic printing
 
@@ -692,13 +692,13 @@ writeln(defaultsProc(y=9.876, x=13)); // the parameters can be named out of orde
 /* // Time is one of the standard modules. */
 /*   use Time; */
 
-/* // We'll use this procedure in the parallelism section. */
-/*   proc countdown(seconds: int) { */
-/*     for i in 1..seconds by -1 { */
-/*       writeln(i); */
-/*       sleep(1); */
-/*     } */
-/*   } */
+// We'll use this procedure in the parallelism section.
+proc countdown(seconds: int) {
+  for i in 1..seconds by -1 {
+    writeln(i);
+    sleep(1);
+  }
+}
 
 /* // It is possible to create arbitrarily deep module nests. */
 /* // i.e. submodules of OurModule */
@@ -745,7 +745,7 @@ proc printFibb(n: int) {
   writeln("fibonacci(",n,") = ", fibonacci(n));
 }
 
-cobegin { // each statement of the body runs in its own task
+cobegin { // each statement of the body runs in its own task: notice random order
   printFibb(20); // new task
   printFibb(10); // new task
   printFibb(5);  // new task
@@ -757,138 +757,139 @@ cobegin { // each statement of the body runs in its own task
   }
 }
 
-/* // A ``coforall`` loop will create a new task for EACH iteration. */
-/* // Again we see that prints happen in any order. */
-/* // NOTE: ``coforall`` should be used only for creating tasks! */
-/* // Using it to iterating over a structure is very a bad idea! */
-/*   var num_tasks = 10; // Number of tasks we want */
-/*   coforall taskID in 1..#num_tasks { */
-/*     writeln("Hello from task# ", taskID); */
-/*   } */
+proc intensive(task: int): void {
+  var a = 0.0;
+  for i in 1..10000000 do
+    a += sqrt(i);
+  writeln((task, a));
+}
 
-/* // ``forall`` loops are another parallel loop, but only create a smaller number */
-/* // of tasks, specifically ``--dataParTasksPerLocale=`` number of tasks. */
-/*   forall i in 1..100 { */
-/*     write(i, ", "); */
-/*   } */
-/*   writeln(); */
+var num_tasks = 10; // Number of tasks we want
+coforall taskID in 1..#num_tasks { // a new task for each iteration: notice random order
+  writeln("Hello from task# ", taskID);
+  //   intensive(taskID);
+} // the execution of the parent task will not continue until all the children sync up
 
-/* // Here we see that there are sections that are in order, followed by */
-/* // a section that would not follow (e.g. 1, 2, 3, 7, 8, 9, 4, 5, 6,). */
-/* // This is because each task is taking on a chunk of the range 1..10 */
-/* // (1..3, 4..6, or 7..9) doing that chunk serially, but each task happens */
-/* // in parallel. Your results may depend on your machine and configuration */
+forall i in 1..100 { // "forall" loops create only reasonable or "--dataParTasksPerLocale=..." number of tasks
+  write(i, ", ");
+  //  intensive(i);
+} // the execution of the parent task will not continue until all the children sync up
+writeln();
 
-/* // For both the ``forall`` and ``coforall`` loops, the execution of the */
-/* // parent task will not continue until all the children sync up. */
+// ``forall`` loops are particularly useful for parallel iteration over arrays.
+// Lets run an experiment to see how much faster a parallel loop is
+use Time; // Import the Time module to use Timer objects
+var timer: Timer;
+var myBigArray: [{1..4000,1..4000}] real; // Large array we will write into
 
-/* // ``forall`` loops are particularly useful for parallel iteration over arrays. */
-/* // Lets run an experiment to see how much faster a parallel loop is */
-/*   use Time; // Import the Time module to use Timer objects */
-/*   var timer: Timer; */
-/*   var myBigArray: [{1..4000,1..4000}] real; // Large array we will write into */
+// Serial experiment:
+timer.start(); // start timer
+for (x,y) in myBigArray.domain { // serial iteration
+  myBigArray[x,y] = (x:real) / (y:real);
+}
+timer.stop(); // Stop timer
+writeln("Serial: ", timer.elapsed()); // Print elapsed time
+timer.clear(); // Clear timer for parallel loop
 
-/* // Serial Experiment: */
-/*   timer.start(); // Start timer */
-/*   for (x,y) in myBigArray.domain { // Serial iteration */
-/*     myBigArray[x,y] = (x:real) / (y:real); */
-/*   } */
-/*   timer.stop(); // Stop timer */
-/*   writeln("Serial: ", timer.elapsed()); // Print elapsed time */
-/*   timer.clear(); // Clear timer for parallel loop */
+// Parallel experiment:
+timer.start(); // start timer
+forall (x,y) in myBigArray.domain { // Parallel iteration
+  myBigArray[x,y] = (x:real) / (y:real);
+}
+timer.stop(); // Stop timer
+writeln("Parallel: ", timer.elapsed()); // Print elapsed time
+timer.clear();
 
-/* // Parallel Experiment: */
-/*   timer.start(); // start timer */
-/*   forall (x,y) in myBigArray.domain { // Parallel iteration */
-/*     myBigArray[x,y] = (x:real) / (y:real); */
-/*   } */
-/*   timer.stop(); // Stop timer */
-/*   writeln("Parallel: ", timer.elapsed()); // Print elapsed time */
-/*   timer.clear(); */
+[val in myBigArray] val = 1 / val; // the bracket-style loop-expression defaults to parallel execution
+[i in 1..10] writeln(i);   // notice the order: it uses "forall" underneath
 
-/* // You may have noticed that (depending on how many cores you have) */
-/* // the parallel loop went faster than the serial loop. */
+// local vs global variables, parallel reduction
+var x = 1; // x is defined outside forall, so it has the same (global) value for all threads
+forall i in 1..10 {
+  var y:real = i; // can't assign global x inside the parallel loop, but can define a new local variable y
+  writeln((x,y)); 
+}
+var counter1 = 0;
+coforall i in 1..10 with (+ reduce counter1) { // we have 10 local (per thread) counter1=1 which we then sum up
+  counter1 = 1;
+}
+writeln('counter1 = ', counter1); // prints 10
+var counter2 = 0;
+forall i in 1..10 with (+ reduce counter2) { // we have fewer threads so the final counter2 is likely smaller
+  counter2 = 1;
+}
+writeln('counter2 = ', counter2); // prints the actual number of threads (if not larger than 10)
+var total:real = 0;
+forall i in 1..100 with (+ reduce total) { // we have fewer threads so the final counter2 is likely smaller
+  total += i;
+}
+writeln('total = ', total); // prints the sum computed in parallel, result independent of the # of threads
+halt();
 
-/* // The bracket style loop-expression described */
-/* // much earlier implicitly uses a ``forall`` loop. */
-/*   [val in myBigArray] val = 1 / val; // Parallel operation */
 
-/* // Atomic variables, common to many languages, are ones whose operations */
-/* // occur uninterrupted. Multiple threads can therefore modify atomic */
-/* // variables and can know that their values are safe. */
-/* // Chapel atomic variables can be of type ``bool``, ``int``, */
-/* // ``uint``, and ``real``. */
-/*   var uranium: atomic int; */
-/*   uranium.write(238);      // atomically write a variable */
-/*   writeln(uranium.read()); // atomically read a variable */
 
-/* // Atomic operations are described as functions, so you can define your own. */
-/*   uranium.sub(3); // atomically subtract a variable */
-/*   writeln(uranium.read()); */
 
-/*   var replaceWith = 239; */
-/*   var was = uranium.exchange(replaceWith); */
-/*   writeln("uranium was ", was, " but is now ", replaceWith); */
 
-/*   var isEqualTo = 235; */
-/*   if uranium.compareExchange(isEqualTo, replaceWith) { */
-/*     writeln("uranium was equal to ", isEqualTo, */
-/*              " so replaced value with ", replaceWith); */
-/*   } else { */
-/*     writeln("uranium was not equal to ", isEqualTo, */
-/*              " so value stays the same...  whatever it was"); */
-/*   } */
 
-/*   sync { */
-/*     begin { // Reader task */
-/*       writeln("Reader: waiting for uranium to be ", isEqualTo); */
-/*       uranium.waitFor(isEqualTo); */
-/*       writeln("Reader: uranium was set (by someone) to ", isEqualTo); */
-/*     } */
+var uranium: atomic int; // atomic variable: can be modified by multiple threads, their values are safe
+uranium.write(238);      // atomically write a variable
+writeln(uranium.read()); // atomically read a variable
+uranium.sub(3); // atomically subtract a variable
+writeln(uranium.read());
+var replaceWith = 239;
+var was = uranium.exchange(replaceWith);
+writeln("uranium was ", was, " but is now ", replaceWith);
+var isEqualTo = 235;
+if uranium.compareExchange(isEqualTo, replaceWith) {
+  writeln("uranium was equal to ", isEqualTo,
+	  " so replaced value with ", replaceWith);
+} else {
+  writeln("uranium was not equal to ", isEqualTo,
+	  " so value stays the same...  whatever it was");
+ }
 
-/*     begin { // Writer task */
-/*       writeln("Writer: will set uranium to the value ", isEqualTo, " in..."); */
-/*       countdown(3); */
-/*       uranium.write(isEqualTo); */
-/*     } */
-/*   } */
+// sync {
+//   begin { // Reader task
+//     writeln("Reader: waiting for uranium to be ", isEqualTo);
+//     uranium.waitFor(isEqualTo);
+//     writeln("Reader: uranium was set (by someone) to ", isEqualTo);
+//   }
+//   begin { // Writer task
+//     writeln("Writer: will set uranium to the value ", isEqualTo, " in...");
+//     countdown(3);
+//     uranium.write(isEqualTo);
+//   }
+// }
 
-/* // ``sync`` variables have two states: empty and full. */
-/* // If you read an empty variable or write a full variable, you are waited */
-/* // until the variable is full or empty again. */
-/*   var someSyncVar$: sync int; // varName$ is a convention not a law. */
-/*   sync { */
-/*     begin { // Reader task */
-/*       writeln("Reader: waiting to read."); */
-/*       var read_sync = someSyncVar$; */
-/*       writeln("Reader: value is ", read_sync); */
-/*     } */
+// var someSyncVar: sync int; // ``sync`` variables have two states: empty and full.
+// sync {
+//   begin { // Reader task
+//     writeln("Reader: waiting to read.");
+//     var read_sync = someSyncVar; // pause until variable is full (written) before reading
+//     writeln("Reader: value is ", read_sync);
+//   }
+//   begin { // Writer task
+//     writeln("Writer: will write in...");
+//     countdown(3);
+//     someSyncVar = 123; // pause until variable is empty (read) before writing
+//   }
+// }
 
-/*     begin { // Writer task */
-/*       writeln("Writer: will write in..."); */
-/*       countdown(3); */
-/*       someSyncVar$ = 123; */
-/*     } */
-/*   } */
-
-/* // ``single`` vars can only be written once. A read on an unwritten ``single`` */
-/* // results in a wait, but when the variable has a value it can be read indefinitely. */
-/*   var someSingleVar$: single int; // varName$ is a convention not a law. */
-/*   sync { */
-/*     begin { // Reader task */
-/*       writeln("Reader: waiting to read."); */
-/*       for i in 1..5 { */
-/*         var read_single = someSingleVar$; */
-/*         writeln("Reader: iteration ", i,", and the value is ", read_single); */
-/*       } */
-/*     } */
-
-/*     begin { // Writer task */
-/*       writeln("Writer: will write in..."); */
-/*       countdown(3); */
-/*       someSingleVar$ = 5; // first and only write ever. */
-/*     } */
-/*   } */
+// var someSingleVar: single int; // ``single`` variables can only be written once
+// sync {
+//   begin { // Reader task
+//     writeln("Reader: waiting to read.");
+//     for i in 1..5 {
+//       var read_single = someSingleVar; // read on an unwritten ``single`` results in a wait
+//       writeln("Reader: iteration ", i,", and the value is ", read_single);
+//     }
+//   }
+//   begin { // Writer task
+//     writeln("Writer: will write in...");
+//     countdown(3);
+//     someSingleVar = 5; // first and only write ever
+//   }
+// }
 
 /* // Heres an example using atomics and a ``sync`` variable to create a */
 /* // count-down mutex (also known as a multiplexer). */
@@ -918,29 +919,21 @@ cobegin { // each statement of the body runs in its own task
 /*     lock$.writeXF(true); // Set lock$ to full (signal) */
 /*   } */
 
-/* // We can define the operations ``+ * & | ^ && || min max minloc maxloc`` */
-/* // over an entire array using scans and reductions. */
-/* // Reductions apply the operation over the entire array and */
-/* // result in a scalar value. */
-/*   var listOfValues: [1..10] int = [15,57,354,36,45,15,456,8,678,2]; */
-/*   var sumOfValues = + reduce listOfValues; */
-/*   var maxValue = max reduce listOfValues; // 'max' give just max value */
+// We can define the operations "+ * & | ^ && || min max minloc maxloc" over an array using.
+// Reductions apply the operation over the entire array and result in a scalar value.
+var listOfValues: [1..10] int = [15,57,354,36,45,15,456,8,678,2];
+var sumOfValues = + reduce listOfValues;
+var maxValue = max reduce listOfValues;
+var (theMaxValue, idxOfMax) = maxloc reduce zip(listOfValues, listOfValues.domain);
+writeln((sumOfValues, maxValue, idxOfMax, listOfValues[idxOfMax]));
 
-/* // ``maxloc`` gives max value and index of the max value. */
-/* // Note: We have to zip the array and domain together with the zip iterator. */
-/*   var (theMaxValue, idxOfMax) = maxloc reduce zip(listOfValues, */
-/*                                                   listOfValues.domain); */
-
-/*   writeln((sumOfValues, maxValue, idxOfMax, listOfValues[idxOfMax])); */
-
-/* // Scans apply the operation incrementally and return an array with the */
-/* // values of the operation at that index as it progressed through the */
-/* // array from ``array.domain.low`` to ``array.domain.high``. */
-/*   var runningSumOfValues = + scan listOfValues; */
-/*   var maxScan = max scan listOfValues; */
-/*   writeln(runningSumOfValues); */
-/*   writeln(maxScan); */
-/* } // end main() */
+// Scans apply the operation incrementally and return an array with the
+// values of the operation at that index as it progressed through the
+// array from ``array.domain.low`` to ``array.domain.high``.
+var runningSumOfValues = + scan listOfValues;
+var maxScan = max scan listOfValues;
+writeln(runningSumOfValues);
+writeln(maxScan);
 
 // proc main() {   // main() will always run, but only after everything else above and below runs
 //   writeln("do something");

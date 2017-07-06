@@ -1,6 +1,8 @@
-test: learnChapelInYMinutes.chpl
-# domainMaps.chpl learn.chpl learnChapelInYMinutes.chpl hello4-datapar-dist.chpl hello6-taskpar-dist.chpl
-# hello3-datapar.chpl hello5-taskpar.chpl
+test: taskParallel.chpl
+# learnChapelInYMinutes.chpl hello4-datapar-dist.chpl hello6-taskpar-dist.chpl
+# hello3-datapar.chpl hello5-taskpar.chpl domainMaps.chpl
+	chpl -o $@ $^
+pi: pi.chpl
 	chpl -o $@ $^
 clean:
 	@/bin/rm -rf *~ *.o
