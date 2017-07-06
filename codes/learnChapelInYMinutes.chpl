@@ -245,6 +245,10 @@ for idx in realArray.domain {  // arrays have domains as members that can be ite
 }
 writeln(realArray.domain);
 writeln(realArray);
+writeln('rows 2-3 are ',realArray[2..3,..]); // slicing through an array
+writeln('column 1 is ',realArray[..,1]); // slicing through an array
+writeln('last three elements of column 6 are ',realArray[3..,6]); // slicing through an array
+
 var rSum: real = 0;
 for value in realArray { // the values of an array can also be iterated directly
   rSum += value; // Read a value
@@ -469,24 +473,22 @@ writeln(defaultsProc(y=9.876, x=13)); // the parameters can be named out of orde
 /*       } */
 /* *\/ */
 
-/* Section: Iterators */
+// Section: Iterators
 
-/* // Iterators are sisters to the procedure, and almost everything about */
-/* // procedures also applies to iterators. However, instead of returning a single */
-/* // value, iterators may yield multiple values to a loop. */
-/* // */
-/* // This is useful when a complicated set or order of iterations is needed, as */
-/* // it allows the code defining the iterations to be separate from the loop */
-/* // body. */
-/* iter oddsThenEvens(N: int): int { */
-/*   for i in 1..N by 2 do */
-/*     yield i; // yield values instead of returning. */
-/*   for i in 2..N by 2 do */
-/*     yield i; */
-/* } */
+// Iterators are sisters to the procedure, and almost everything about procedures also applies to
+// iterators. However, instead of returning a single value, iterators may yield multiple values to a
+// loop. This is useful when a complicated set or order of iterations is needed, as it allows the code
+// defining the iterations to be separate from the loop body.
 
-/* for i in oddsThenEvens(10) do write(i, ", "); */
-/* writeln(); */
+iter oddsThenEvens(N: int): int {
+  for i in 1..N by 2 do
+    yield i; // yield values instead of returning
+  for i in 2..N by 2 do
+    yield i;
+}
+
+for i in oddsThenEvens(10) do write(i, ", ");
+writeln();
 
 /* // Iterators can also yield conditionally, the result of which can be nothing */
 /* iter absolutelyNothing(N): int { */
@@ -540,6 +542,8 @@ writeln(defaultsProc(y=9.876, x=13)); // the parameters can be named out of orde
 /* // the same size, the body of the expression can be thought of as an iterator. */
 /* // Because iterators can yield nothing, that iterator yields a different number */
 /* // of things than the domain of the array or loop, which is not allowed. */
+
+halt();
 
 /* Section: Classes */
 
@@ -802,34 +806,6 @@ timer.clear();
 
 [val in myBigArray] val = 1 / val; // the bracket-style loop-expression defaults to parallel execution
 [i in 1..10] writeln(i);   // notice the order: it uses "forall" underneath
-
-// local vs global variables, parallel reduction
-var x = 1; // x is defined outside forall, so it has the same (global) value for all threads
-forall i in 1..10 {
-  var y:real = i; // can't assign global x inside the parallel loop, but can define a new local variable y
-  writeln((x,y)); 
-}
-var counter1 = 0;
-coforall i in 1..10 with (+ reduce counter1) { // we have 10 local (per thread) counter1=1 which we then sum up
-  counter1 = 1;
-}
-writeln('counter1 = ', counter1); // prints 10
-var counter2 = 0;
-forall i in 1..10 with (+ reduce counter2) { // we have fewer threads so the final counter2 is likely smaller
-  counter2 = 1;
-}
-writeln('counter2 = ', counter2); // prints the actual number of threads (if not larger than 10)
-var total:real = 0;
-forall i in 1..100 with (+ reduce total) { // we have fewer threads so the final counter2 is likely smaller
-  total += i;
-}
-writeln('total = ', total); // prints the sum computed in parallel, result independent of the # of threads
-halt();
-
-
-
-
-
 
 var uranium: atomic int; // atomic variable: can be modified by multiple threads, their values are safe
 uranium.write(238);      // atomically write a variable
