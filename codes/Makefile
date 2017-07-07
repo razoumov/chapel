@@ -1,4 +1,4 @@
-test: evolution.chpl
+test: blocks.chpl
 	chpl -o $@ $^
 pi: pi.chpl
 	chpl -o $@ $^

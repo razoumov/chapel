@@ -45,7 +45,7 @@ forall (i,j) in mesh {
 var TTnew: [mesh] real;
 for step in 1..5 {
   forall (i,j) in mesh do
-    TTnew[i,j] = (TT[i-1,j]+TT[i+1,j]+TT[i,j-1]+TT[i,j+1])/4;
+    TTnew[i,j] = (TT[i-1,j] + TT[i+1,j] + TT[i,j-1] + TT[i,j+1]) / 4;
   TT[mesh] = TTnew[mesh]; // uses parallel forall underneath
   writeln((step, TT[n/2,n/2], TT[2,2]));
 }
