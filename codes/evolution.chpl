@@ -10,7 +10,7 @@ var TT: [largerMesh] real;
 forall (i,j) in mesh {
   var x = ((i:real)-0.5)/(n:real); // x, y are local to each task
   var y = ((j:real)-0.5)/(n:real);
-  TT[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2)/0.01); // narrow gaussian peak
+  TT[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2) / 0.01); // narrow gaussian peak
 }
 
 // writeln(TT);
@@ -31,7 +31,7 @@ forall (i,j) in mesh {
 //   m = "%i".format(here.id);
 // writeln(nodeID);
 
-// 0 0 0 0 0 1 1 1 1 1
+// 0 0 0 0 0 1 1 1 1 1 - the outer perimeter is "ghost zones"
 // 0 0 0 0 0 1 1 1 1 1
 // 0 0 0 0 0 1 1 1 1 1
 // 0 0 0 0 0 1 1 1 1 1
@@ -48,4 +48,10 @@ for step in 1..5 {
     TTnew[i,j] = (TT[i-1,j] + TT[i+1,j] + TT[i,j-1] + TT[i,j+1]) / 4;
   TT[mesh] = TTnew[mesh]; // uses parallel forall underneath
   writeln((step, TT[n/2,n/2], TT[2,2]));
+  // we implemented an open boundary: TT in "ghost zones" is always 0; let's calculate total TT
+  //  var total = + reduce TT; // this does not work for some reason ...
+  var total: real = 0;
+  forall (i,j) in mesh with (+ reduce total) do
+    total += TT[i,j];
+  writeln("total = ", total);
 }

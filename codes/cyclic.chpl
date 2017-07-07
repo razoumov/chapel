@@ -6,7 +6,7 @@ var A2: [m2] string;
 forall a in A2 {
   a = "%i".format(a.locale.id) + '-' + here.name + '-' + here.maxTaskPar + '  ';
 }
-// writeln(A2);
+writeln(A2);
 
 // 0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12
 // 2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12
@@ -16,6 +16,12 @@ forall a in A2 {
 // 2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12
 // 0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12
 // 2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12
+
+for loc in Locales {
+  on loc {
+    writeln(A2.localSubdomain());
+  }
+}
 
 // These are predefined distributions: BlockDist, CyclicDist, BlockCycDist, ReplicatedDist,
 // DimensionalDist2D, ReplicatedDim, BlockCycDim - for details see
