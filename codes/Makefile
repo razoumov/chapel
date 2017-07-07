@@ -1,4 +1,4 @@
-test: dataParallel.chpl
+test: evolution.chpl
 	chpl -o $@ $^
 pi: pi.chpl
 	chpl -o $@ $^

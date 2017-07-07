@@ -1,43 +1,50 @@
+// http://chapel.cray.com/docs/1.14/primers/primers/distributions.html
 // d. Data parallelism: work with T as a matrix, explore mapping its domain with different methods.
 // e. Advanced features: Save data of iterations to file, maybe create a customized iterator for the problem ?
 
-// forall a in A do { // go through all 64 elements in A
-//   a = "%i".format(a.locale.id) + '_' + here.name + '_' + here.maxTaskPar;
-//  }
-// writeln(A);
-
-config const n = 10;
+config const n = 8;
 const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory on a single locale
-var T: [mesh] real; // a 2D array defined in shared memory on a single locale
+var T: [mesh] real; // a 2D array defined in shared memory on a single locale (mapped onto this domain)
 
 use BlockDist;
-// largerMesh is a (n+2)^2 distributed mesh mapped to locales, with one-cell-wide "ghost zones" on "end locales"
-const largerMesh: domain(2) = {0..n+1, 0..n+1} dmapped Block(boundingBox={1..n,1..n});
-// smallerMesh is n^2, similarly mapped to locales, but without "ghost zones"
-const smallerMesh = largerMesh[1..n,1..n];
-// message is a 2D string array on top of our mesh mapped to locales
-var message: [smallerMesh] string;
-forall a in message {
-  a = "%i".format(a.locale.id);
+// distributedMesh is a n^2 block-distributed domain mapped to locales
+const distributedMesh: domain(2) dmapped Block(boundingBox=mesh) = mesh;
+// A is a 2D string block-distributed array on top of the distributed domain mapped to locales
+var A: [distributedMesh] string;
+forall a in A { // go through all n^2 elements in A
+  // here.id and a.locale.id refer to the same thing (the ID of the current locale)
+  a = "%i".format(a.locale.id) + '-' + here.name + '-' + here.maxTaskPar + '  ';
 }
-writeln(message);
+// writeln(A);
 
+// 0-b402-12   0-b402-12   0-b402-12   0-b402-12   1-b403-12   1-b403-12   1-b403-12   1-b403-12
+// 0-b402-12   0-b402-12   0-b402-12   0-b402-12   1-b403-12   1-b403-12   1-b403-12   1-b403-12
+// 0-b402-12   0-b402-12   0-b402-12   0-b402-12   1-b403-12   1-b403-12   1-b403-12   1-b403-12
+// 0-b402-12   0-b402-12   0-b402-12   0-b402-12   1-b403-12   1-b403-12   1-b403-12   1-b403-12
+// 2-b410-12   2-b410-12   2-b410-12   2-b410-12   3-b411-12   3-b411-12   3-b411-12   3-b411-12
+// 2-b410-12   2-b410-12   2-b410-12   2-b410-12   3-b411-12   3-b411-12   3-b411-12   3-b411-12
+// 2-b410-12   2-b410-12   2-b410-12   2-b410-12   3-b411-12   3-b411-12   3-b411-12   3-b411-12
+// 2-b410-12   2-b410-12   2-b410-12   2-b410-12   3-b411-12   3-b411-12   3-b411-12   3-b411-12
 
+use CyclicDist; // elements are sent to locales in a round-robin pattern
+const m2: domain(2) dmapped Cyclic(startIdx=mesh.low) = mesh; // mesh.low is the first index (1,1)
+var A2: [m2] string;
+forall a in A2 {
+  a = "%i".format(a.locale.id) + '-' + here.name + '-' + here.maxTaskPar + '  ';
+}
+// writeln(A2);
 
-// 2D domain map with some decomposition; on 2-3 locales this produces 1D decomposition; on 4 locales -
-// 2D (2x2) decomposition
+// 0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12
+// 2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12
+// 0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12
+// 2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12
+// 0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12
+// 2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12
+// 0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12   0-b402-12   1-b403-12
+// 2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12   2-b410-12   3-b411-12
 
+// These are predefined distributions: BlockDist, CyclicDist, BlockCycDist, ReplicatedDist,
+// DimensionalDist2D, ReplicatedDim, BlockCycDim - for details see
+// http://chapel.cray.com/docs/1.12/modules/distributions.html
 
-
-
-
-
-
-// var T: [1..100,1..100] real; // define 
-// var x, y: real;
-
-// for (i,j) in T.domain { // serial iteration
-//   x = ((i:real)-0.5)/100.0;
-//   y = ((j:real)-0.5)/100.0;
-//   T[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2)/0.01); // narrow gaussian peak
-// }
+// evolution.chpl
