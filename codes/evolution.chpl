@@ -5,7 +5,6 @@ const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory o
 
 // largerMesh is a (n+2)^2 block-distributed mesh mapped to locales, with one-cell-wide "ghost zones" on "end locales"
 const largerMesh: domain(2) dmapped Block(boundingBox=mesh) = {0..n+1, 0..n+1};
-// note that distributedMesh and largerMesh[1..n,1..n] would refer to the same domain
 var TT: [largerMesh] real;
 forall (i,j) in mesh {
   var x = ((i:real)-0.5)/(n:real); // x, y are local to each task

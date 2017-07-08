@@ -12,8 +12,18 @@
   \end{itemize}
 \end{frame}
 
+
 http://chapel.cray.com/docs/1.14/primers/primers/distributions.html
 http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf
+builtin Locales variable
+- for loc in Locales {} followed by on loc {}
+- do something on Locales[1]
+become very proficient with regular domains
 blocks.chpl
+- introduce a block-distributed domain and an array of to of it
 cyclic.chpl
 evolution.chpl
+periodic.chpl
+- exercise: modify evolution.chpl to put in periodic BCs
+- check energy conservation
+- write out each timestep to an ASCII file
