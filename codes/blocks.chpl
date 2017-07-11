@@ -28,17 +28,17 @@ writeln(A);
 // 2-b410-12   2-b410-12   2-b410-12   2-b410-12   3-b411-12   3-b411-12   3-b411-12   3-b411-12
 // 2-b410-12   2-b410-12   2-b410-12   2-b410-12   3-b411-12   3-b411-12   3-b411-12   3-b411-12
 
-for loc in Locales {
-  on loc {
-    writeln(A.localSubdomain());
-  }
-}
+// for loc in Locales {
+//   on loc {
+//     writeln(A.localSubdomain());
+//   }
+// }
 
-var counter = 0;
-forall a in A with (+ reduce counter) {
-  counter = 1;
-  writeln(a);
-}
-writeln("actual number of threads = ", counter); // heavily depends on n; for large n=30 will maximize
-						 // the number of threads on each locale: try running
-						 // with and without --n=30
+// var counter = 0;
+// forall a in A with (+ reduce counter) {
+//   counter = 1;
+//   writeln(a);
+// }
+// writeln("actual number of threads = ", counter); // heavily depends on n; for large n=30 will maximize
+// 						 // the number of threads on each locale: try running
+// 						 // with and without --n=30
