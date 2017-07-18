@@ -1,4 +1,4 @@
-test: blocks.chpl
+test: locality.chpl
 	chpl -o $@ $^
 hello: hello6-taskpar-dist.chpl
 	chpl -o $@ $^
