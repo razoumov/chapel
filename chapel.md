@@ -32,10 +32,14 @@ many things from learnChapelInYMinutes.chpl
 
 explain how parallelism and locality are orthogonal things in Chapel => four examples
 
-for
-forall
-coforall
-locality.chpl
+for  
+forall  
+coforall  
+reduction  
+locality.chpl  
+
+**Exercise**: write a task-parallel code to compute pi using the same algorithm as in pi.c (or pi.py) in
+the "Introduction to HPC" course. Use a reduction operation.
 
 # Data parallelism
 
@@ -78,9 +82,9 @@ for (x,y) in twoDimensions {
 
 Let's define an n^2 domain and print out
 
-(1) t.locale.id = the ID of the locale holding the element t of T (should be 0)
-(2) here.id = the ID of the locale on which the code is running (should be 0)
-(3) here.maxTaskPar = the number of cores (max parallelism with 1 task/core) (should be 3)
+(1) t.locale.id = the ID of the locale holding the element t of T (should be 0)  
+(2) here.id = the ID of the locale on which the code is running (should be 0)  
+(3) here.maxTaskPar = the number of cores (max parallelism with 1 task/core) (should be 3)  
 
 ~~~
 config const n = 8;
@@ -128,14 +132,14 @@ Let's now define an n^2 distributed (over several locales) domain distributedMes
 blocks. On top of this domain we define a 2D block-distributed array A of strings mapped to locales in
 exactly the same pattern as the underlying domain. Let's print out
 
-(1) a.locale.id = the ID of the locale holding the element a of A
-(2) here.name = the name of the locale on which the code is running
-(3) here.maxTaskPar = the number of cores on the locale on which the code is running
+(1) a.locale.id = the ID of the locale holding the element a of A  
+(2) here.name = the name of the locale on which the code is running  
+(3) here.maxTaskPar = the number of cores on the locale on which the code is running  
 
-We'll package output into each element of A as a string:
-a = "%i".format(int) + string + int
-is a shortcut for
-a = "%i".format(int) + string + "%i".format(int)
+We'll package output into each element of A as a string:  
+a = "%i".format(int) + string + int  
+is a shortcut for  
+a = "%i".format(int) + string + "%i".format(int)  
 
 ~~~
 use BlockDist; // use standard block distribution module to partition the domain into blocks
@@ -195,9 +199,9 @@ small n=5 will run a few threads per locale.
 So far we looked at block distribution. Let's take a look at another standard module to partition the
 domain among locales, called CyclicDist. For each element of the array we will print out again
 
-(1) a.locale.id = the ID of the locale holding the element a of A
-(2) here.name = the name of the locale on which the code is running
-(3) here.maxTaskPar = the number of cores on the locale on which the code is running
+(1) a.locale.id = the ID of the locale holding the element a of A  
+(2) here.name = the name of the locale on which the code is running  
+(3) here.maxTaskPar = the number of cores on the locale on which the code is running  
 
 ~~~
 use CyclicDist; // elements are sent to locales in a round-robin pattern
@@ -271,6 +275,8 @@ forall (i,j) in mesh
 **Answer**: the first one will run on multiple locales in parallel, whereas the second will run in
 parallel on multiple threads on locale 0 only, since "mesh" is defined on locale 0.
 
+The code above will produce something like this:
+
  0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0  
  0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0  
  0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0  
@@ -308,8 +314,8 @@ The outer perimeter in the partition below should be "ghost zones":
 **Exercise**: in addition to here.id, also print the ID of the locale holding that value. Is it the same
 or different from here.id?
 
-Now we implement the parallel solver, by adding the following to our code (contains a mistake on
-purpose!):
+Now we implement the parallel solver, by adding the following to our code (*contains a mistake on
+purpose!*):
 
 ~~~
 var Tnew: [mesh] real;
@@ -323,17 +329,15 @@ for step in 1..5 { // time-stepping
 **Exercise**: can anyone see a mistake here?
 
 **Answer**: it should be  
-  forall (i,j) in nodeID.domain[1..n,1..n] do  
+  forall (i,j) in Tnew.domain[1..n,1..n] do  
 instead of  
   forall (i,j) in mesh do  
 as the last one will run only in parallel on threads on locale 0, whereas the former will run on multiple
 locales in parallel.
 
 This is the entire parallel solver! Note that we implemented an open boundary: T in "ghost zones" is
-always 0; let's calculate total T var total = + reduce T; // this does not work for some reason ...
-
-Let's add some printout and also compute the total energy on the mesh, by adding the following to our
-code:
+always 0. Let's add some printout and also compute the total energy on the mesh, by adding the following
+to our code:
 
 ~~~
   writeln((step, T[n/2,n/2], T[2,2]));
@@ -366,6 +370,8 @@ This produced the following output for me:
  2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
  2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
 
+## Periodic boundary conditions
+
 abc
 periodic.chpl
 - exercise: modify evolution.chpl to put in periodic BCs
@@ -395,4 +401,10 @@ become very proficient with regular domains
 
 
 
-### Advanced language features
+# Advanced language features
+
+## I/O
+
+* works only with ASCII
+* binary it produces cannot be read anywhere (not the endians problem!)
+* would love to write NetCDF
