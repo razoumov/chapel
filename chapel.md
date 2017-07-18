@@ -1,3 +1,17 @@
+You'll need to submit the relevant reservation for that day using (for instance)
+
+sbatch --reservation=def-guest_cpu_5 --account=def-guest
+
+There is a different reservation for each day of the school (def-guest_cpu_[5-8], since the reservations
+halt overnight. I would advise you to consult with Juan regarding the best way to obtain an interactive
+shell on the reservation using either salloc or sbatch, as I have very little experience in user-side
+operations of the scheduler.
+
+
+
+
+
+
 # Introduction to heat equation
 
 Slide: original 2D diffusion equation, discretized equation with forward Euler (explicit) time stepping.
@@ -10,10 +24,17 @@ Slide: why another language?
 
 Slide: useful links.
 
-Slide: exercise with the bisection method.
+many things from learnChapelInYMinutes.chpl
+
+**Exercise**: show the bisection method slide.
 
 # Task parallelism
 
+explain how parallelism and locality are orthogonal things in Chapel => four examples
+
+for
+forall
+coforall
 locality.chpl
 
 # Data parallelism
@@ -32,7 +53,7 @@ make test           # chpl test.chpl -o test
 
 Recall: ranges are 1D sets of integer indices.
 
-~~~ {.chapel}
+~~~
 var range1to10: range = 1..10; // 1, 2, 3, ..., 10
 var a = 1234, b = 5678;
 var rangeatob: range = a..b; // using variables
@@ -42,7 +63,7 @@ var range1toInf = 1.. ; // unbounded range
 
 Recall: domains are bounded multi-dimensional sets of integer indices.
 
-~~~ {.chapel}
+~~~
 var domain1to10: domain(1) = {1..10};        // 1D domain from 1 to 10
 var twoDimensions: domain(2) = {-2..2,0..2}; // 2D domain over a product of ranges
 var thirdDim: range = 1..16;
@@ -61,7 +82,7 @@ Let's define an n^2 domain and print out
 (2) here.id = the ID of the locale on which the code is running (should be 0)
 (3) here.maxTaskPar = the number of cores (max parallelism with 1 task/core) (should be 3)
 
-~~~ {.chapel}
+~~~
 config const n = 8;
 const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory on a single locale
 var T: [mesh] real; // a 2D array of reals defined in shared memory on a single locale (mapped onto this domain)
@@ -72,7 +93,7 @@ forall t in T { // go in parallel through all n^2 elements of T
 
 By the way, how do we access indices of T?
 
-~~~ {.chapel}
+~~~
 forall t in T.domain {
   writeln(t);   // t is a tuple (i,j)
 }
@@ -80,7 +101,7 @@ forall t in T.domain {
 
 How can we define multiple arrays on the same mesh?
 
-~~~ {.chapel}
+~~~
 const grid = {1..100}; // 1D domain
 const alpha = 5; // some number
 var A, B, C: [grid] real; // local arrays on this 1D domain
@@ -116,7 +137,7 @@ a = "%i".format(int) + string + int
 is a shortcut for
 a = "%i".format(int) + string + "%i".format(int)
 
-~~~ {.chapel}
+~~~
 use BlockDist; // use standard block distribution module to partition the domain into blocks
 config const n = 8;
 const mesh: domain(2) = {1..n, 1..n};
@@ -142,7 +163,7 @@ Let's try to run this on 1, 2, 4 locales. Here is an example on 4 locales with 1
 
 Now print the range of indices for each sub-domain by adding the following to our code:
 
-~~~ {.chapel}
+~~~
 for loc in Locales {
   on loc {
     writeln(A.localSubdomain());
@@ -159,7 +180,7 @@ On 4 locales we should get:
 
 Let's count the number of threads by adding the following to our code:
 
-~~~ {.chapel}
+~~~
 var counter = 0;
 forall a in A with (+ reduce counter) { // go in parallel through all n^2 elements
   counter = 1;
@@ -178,7 +199,7 @@ domain among locales, called CyclicDist. For each element of the array we will p
 (2) here.name = the name of the locale on which the code is running
 (3) here.maxTaskPar = the number of cores on the locale on which the code is running
 
-~~~ {.chapel}
+~~~
 use CyclicDist; // elements are sent to locales in a round-robin pattern
 config const n = 8;
 const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory on a single locale
@@ -201,7 +222,7 @@ writeln(A2);
 
 Again let's print the range of indices for each sub-domain by adding the following to our code:
 
-~~~ {.chapel}
+~~~
 for loc in Locales {
   on loc {
     writeln(A2.localSubdomain());
@@ -220,68 +241,136 @@ http://chapel.cray.com/docs/1.12/modules/distributions.html
 
 ## Diffusion solver on distributed domains
 
-abc
+Now let's return to our original diffusion solver problem -- show the slide.
+
+~~~
 use BlockDist;
-
 config const n = 8;
-const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory on a single locale
+const mesh: domain(2) = {1..n, 1..n};  // local 2D n^2 domain
+~~~
 
-// largerMesh is a (n+2)^2 block-distributed mesh mapped to locales, with one-cell-wide "ghost zones" on "end locales"
+We will add a larger (n+2)^2 block-distributed domain largerMesh with one-cell-wide "ghost zones" on "end
+locales", and define a temperature array T on top of it, by adding the following to our code:
+
+~~~
 const largerMesh: domain(2) dmapped Block(boundingBox=mesh) = {0..n+1, 0..n+1};
-var TT: [largerMesh] real;
-forall (i,j) in mesh {
+var T: [largerMesh] real; // a block-distributed array of temperatures
+forall (i,j) in T.domain[1..n,1..n] {
   var x = ((i:real)-0.5)/(n:real); // x, y are local to each task
   var y = ((j:real)-0.5)/(n:real);
-  TT[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2) / 0.01); // narrow gaussian peak
+  T[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2) / 0.01); // narrow gaussian peak
 }
+writeln(T);
+~~~
 
-// writeln(TT);
+**Question**: why do we have  
+forall (i,j) in T.domain[1..n,1..n] {  
+and not  
+forall (i,j) in mesh
 
-// 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
-// 0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0
-// 0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0
-// 0.0 1.44716e-10 1.70619e-06 0.000883826 0.0201158 0.0201158 0.000883826 1.70619e-06 1.44716e-10 0.0
-// 0.0 3.29371e-09 3.88326e-05 0.0201158 0.457833 0.457833 0.0201158 3.88326e-05 3.29371e-09 0.0
-// 0.0 3.29371e-09 3.88326e-05 0.0201158 0.457833 0.457833 0.0201158 3.88326e-05 3.29371e-09 0.0
-// 0.0 1.44716e-10 1.70619e-06 0.000883826 0.0201158 0.0201158 0.000883826 1.70619e-06 1.44716e-10 0.0
-// 0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0
-// 0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0
-// 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+**Answer**: the first one will run on multiple locales in parallel, whereas the second will run in
+parallel on multiple threads on locale 0 only, since "mesh" is defined on locale 0.
 
-// var nodeID: [largerMesh] string;
-// forall m in nodeID do
-//   m = "%i".format(here.id);
-// writeln(nodeID);
+ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0  
+ 0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0  
+ 0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0  
+ 0.0 1.44716e-10 1.70619e-06 0.000883826 0.0201158 0.0201158 0.000883826 1.70619e-06 1.44716e-10 0.0  
+ 0.0 3.29371e-09 3.88326e-05 0.0201158 0.457833 0.457833 0.0201158 3.88326e-05 3.29371e-09 0.0  
+ 0.0 3.29371e-09 3.88326e-05 0.0201158 0.457833 0.457833 0.0201158 3.88326e-05 3.29371e-09 0.0  
+ 0.0 1.44716e-10 1.70619e-06 0.000883826 0.0201158 0.0201158 0.000883826 1.70619e-06 1.44716e-10 0.0  
+ 0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0  
+ 0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0  
+ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0  
 
-// 0 0 0 0 0 1 1 1 1 1 - the outer perimeter is "ghost zones"
-// 0 0 0 0 0 1 1 1 1 1
-// 0 0 0 0 0 1 1 1 1 1
-// 0 0 0 0 0 1 1 1 1 1
-// 0 0 0 0 0 1 1 1 1 1
-// 2 2 2 2 2 3 3 3 3 3
-// 2 2 2 2 2 3 3 3 3 3
-// 2 2 2 2 2 3 3 3 3 3
-// 2 2 2 2 2 3 3 3 3 3
-// 2 2 2 2 2 3 3 3 3 3
+Lets define an array of strings nodeID with the same distribution over locales as T, by adding the
+following to our code:
 
-var TTnew: [mesh] real;
-for step in 1..5 {
+~~~
+var nodeID: [largerMesh] string;
+forall m in nodeID do
+  m = "%i".format(here.id);
+writeln(nodeID);
+~~~
+
+The outer perimeter in the partition below should be "ghost zones":
+
+0 0 0 0 0 1 1 1 1 1  
+0 0 0 0 0 1 1 1 1 1  
+0 0 0 0 0 1 1 1 1 1  
+0 0 0 0 0 1 1 1 1 1  
+0 0 0 0 0 1 1 1 1 1  
+2 2 2 2 2 3 3 3 3 3  
+2 2 2 2 2 3 3 3 3 3  
+2 2 2 2 2 3 3 3 3 3  
+2 2 2 2 2 3 3 3 3 3  
+2 2 2 2 2 3 3 3 3 3  
+
+**Exercise**: in addition to here.id, also print the ID of the locale holding that value. Is it the same
+or different from here.id?
+
+Now we implement the parallel solver, by adding the following to our code (contains a mistake on
+purpose!):
+
+~~~
+var Tnew: [mesh] real;
+for step in 1..5 { // time-stepping
   forall (i,j) in mesh do
-    TTnew[i,j] = (TT[i-1,j] + TT[i+1,j] + TT[i,j-1] + TT[i,j+1]) / 4;
-  TT[mesh] = TTnew[mesh]; // uses parallel forall underneath
-  writeln((step, TT[n/2,n/2], TT[2,2]));
-  // we implemented an open boundary: TT in "ghost zones" is always 0; let's calculate total TT
-  //  var total = + reduce TT; // this does not work for some reason ...
+    Tnew[i,j] = (T[i-1,j] + T[i+1,j] + T[i,j-1] + T[i,j+1]) / 4;
+  T[mesh] = Tnew[mesh]; // uses parallel forall underneath
+}
+~~~
+
+**Exercise**: can anyone see a mistake here?
+
+**Answer**: it should be  
+  forall (i,j) in nodeID.domain[1..n,1..n] do  
+instead of  
+  forall (i,j) in mesh do  
+as the last one will run only in parallel on threads on locale 0, whereas the former will run on multiple
+locales in parallel.
+
+This is the entire parallel solver! Note that we implemented an open boundary: T in "ghost zones" is
+always 0; let's calculate total T var total = + reduce T; // this does not work for some reason ...
+
+Let's add some printout and also compute the total energy on the mesh, by adding the following to our
+code:
+
+~~~
+  writeln((step, T[n/2,n/2], T[2,2]));
   var total: real = 0;
   forall (i,j) in mesh with (+ reduce total) do
-    total += TT[i,j];
+    total += T[i,j];
   writeln("total = ", total);
-}
+~~~
 
+Notice how the total energy decreases in time with the open BCs: energy is leaving the system.
 
+**Exercise**: write a code in which here.id would be different from element.locale.id.
 
+Here is one possible solution in which we examine the locality of the finite-difference stencil:
 
+~~~
+var nodeID: [largerMesh] string;
+forall (i,j) in nodeID.domain[1..n,1..n] do
+  nodeID[i,j] = "%i".format(here.id) + '-' + nodeID[i,j].locale.id + '-' + nodeID[i-1,j].locale.id + '  ';
+~~~
 
+This produced the following output for me:
+
+ 0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
+ 0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
+ 0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
+ 0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
+ 2-2-0   2-2-0   2-2-0   2-2-0   3-3-1   3-3-1   3-3-1   3-3-1  
+ 2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
+ 2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
+ 2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
+
+abc
+periodic.chpl
+- exercise: modify evolution.chpl to put in periodic BCs
+- check energy conservation
+- write out each timestep to an ASCII file
 
 
 
@@ -304,10 +393,6 @@ builtin Locales variable
 - do something on Locales[1]
 become very proficient with regular domains
 
-periodic.chpl
-- exercise: modify evolution.chpl to put in periodic BCs
-- check energy conservation
-- write out each timestep to an ASCII file
 
 
 ### Advanced language features

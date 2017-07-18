@@ -5,14 +5,14 @@ const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory o
 
 // largerMesh is a (n+2)^2 block-distributed mesh mapped to locales, with one-cell-wide "ghost zones" on "end locales"
 const largerMesh: domain(2) dmapped Block(boundingBox=mesh) = {0..n+1, 0..n+1};
-var TT: [largerMesh] real;
-forall (i,j) in mesh {
+var T: [largerMesh] real;
+forall (i,j) in T.domain[1..n,1..n] {
   var x = ((i:real)-0.5)/(n:real); // x, y are local to each task
   var y = ((j:real)-0.5)/(n:real);
-  TT[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2) / 0.01); // narrow gaussian peak
+  T[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2) / 0.01); // narrow gaussian peak
 }
 
-// writeln(TT);
+// writeln(T);
 
 // 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
 // 0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0
@@ -41,16 +41,16 @@ forall (i,j) in mesh {
 // 2 2 2 2 2 3 3 3 3 3
 // 2 2 2 2 2 3 3 3 3 3
 
-var TTnew: [mesh] real;
+var Tnew: [mesh] real;
 for step in 1..5 {
-  forall (i,j) in mesh do
-    TTnew[i,j] = (TT[i-1,j] + TT[i+1,j] + TT[i,j-1] + TT[i,j+1]) / 4;
-  TT[mesh] = TTnew[mesh]; // uses parallel forall underneath
-  writeln((step, TT[n/2,n/2], TT[2,2]));
-  // we implemented an open boundary: TT in "ghost zones" is always 0; let's calculate total TT
-  //  var total = + reduce TT; // this does not work for some reason ...
+  forall (i,j) in T.domain[1..n,1..n] do
+    Tnew[i,j] = (T[i-1,j] + T[i+1,j] + T[i,j-1] + T[i,j+1]) / 4;
+  T[mesh] = Tnew[mesh]; // uses parallel forall underneath
+  writeln((step, T[n/2,n/2], T[2,2]));
+  // we implemented an open boundary: T in "ghost zones" is always 0; let's calculate total T
+  //  var total = + reduce T; // this does not work for some reason ...
   var total: real = 0;
   forall (i,j) in mesh with (+ reduce total) do
-    total += TT[i,j];
+    total += T[i,j];
   writeln("total = ", total);
 }
