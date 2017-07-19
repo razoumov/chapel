@@ -17,4 +17,5 @@ pi
 hidden
 hello
 *_real
-sample.raw
+output.dat
+test.chpl
