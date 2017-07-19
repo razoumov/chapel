@@ -1,9 +1,12 @@
-test: blocks.chpl
+test: test.chpl
+	chpl -o $@ $^
+blocks: blocks.chpl
 	chpl -o $@ $^
 hello: hello6-taskpar-dist.chpl
 	chpl -o $@ $^
 pi: pi.chpl
 	chpl -o $@ $^
 clean:
-	@/bin/rm -rf *~ *.o hello test *_real
+	@/bin/rm -rf *~ *.o
+	@find . -maxdepth 1 -type f -executable -exec rm {} +
 #	@find . -type f -perm +111 | xargs /bin/rm -rf
