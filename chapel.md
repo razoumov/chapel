@@ -372,15 +372,36 @@ This produced the following output for me:
 
 ## Periodic boundary conditions
 
-abc
-periodic.chpl
-- exercise: modify evolution.chpl to put in periodic BCs
-- check energy conservation
-- write out each timestep to an ASCII file
+Now let's modify the previous parallel solver to include periodic BCs.
 
+At the beginning of each time step we need to set elements in the ghost zones to their respective values
+on the "opposite ends", by adding the following to our code:
 
+~~~
+  T[0,1..n] = T[n,1..n]; // periodic boundaries on all four sides; these will run via parallel forall
+  T[n+1,1..n] = T[1,1..n];
+  T[1..n,0] = T[1..n,n];
+  T[1..n,n+1] = T[1..n,1];
+~~~
 
+Now total energy should be conserved, as nothing leaves the domain.
 
+## I/O
+
+Let's write the final solution to disk. There are several caveats:
+
+* works only with ASCII
+* it can also write a binary but it fails to be read anywhere (not the endians problem!)
+* would love to write NetCDF and HDF5: probably can do this by calling C/C++ functions from Chapel
+
+We'll add the following to our code to write ASCII:
+
+~~~
+var myFile = open("output.dat", iomode.cw);
+var myWritingChannel = myFile.writer(); // create a writing channel starting at file offset 0
+myWritingChannel.write(T);
+myWritingChannel.close(); // close the channel
+~~~
 
 
 
@@ -402,9 +423,3 @@ become very proficient with regular domains
 
 
 # Advanced language features
-
-## I/O
-
-* works only with ASCII
-* binary it produces cannot be read anywhere (not the endians problem!)
-* would love to write NetCDF
