@@ -16,6 +16,7 @@ test
 pi
 hidden
 hello
+periodic
 *_real
 output.dat
 test.chpl

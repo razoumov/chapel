@@ -1,16 +1,11 @@
-You'll need to submit the relevant reservation for that day using (for instance)
+<!-- You'll need to submit the relevant reservation for that day using (for instance) -->
 
-sbatch --reservation=def-guest_cpu_5 --account=def-guest
+<!-- sbatch --reservation=def-guest_cpu_5 --account=def-guest -->
 
-There is a different reservation for each day of the school (def-guest_cpu_[5-8], since the reservations
-halt overnight. I would advise you to consult with Juan regarding the best way to obtain an interactive
-shell on the reservation using either salloc or sbatch, as I have very little experience in user-side
-operations of the scheduler.
-
-
-
-
-
+<!-- There is a different reservation for each day of the school (def-guest_cpu_[5-8], since the reservations -->
+<!-- halt overnight. I would advise you to consult with Juan regarding the best way to obtain an interactive -->
+<!-- shell on the reservation using either salloc or sbatch, as I have very little experience in user-side -->
+<!-- operations of the scheduler. -->
 
 # Introduction to heat equation
 
@@ -397,29 +392,21 @@ Let's write the final solution to disk. There are several caveats:
 We'll add the following to our code to write ASCII:
 
 ~~~
-var myFile = open("output.dat", iomode.cw);
+var myFile = open("output.dat", iomode.cw); // open the file for writing
 var myWritingChannel = myFile.writer(); // create a writing channel starting at file offset 0
-myWritingChannel.write(T);
+myWritingChannel.write(T); // write the array
 myWritingChannel.close(); // close the channel
 ~~~
 
+Run the code and check the file *output.dat*: it should contain the array T after 5 steps in ASCII.
 
+<!-- Domain types http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf -->
 
+<!-- http://chapel.cray.com/docs/1.14/primers/primers/distributions.html -->
+<!-- http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf -->
+<!-- builtin Locales variable -->
+<!-- - for loc in Locales {} followed by on loc {} -->
+<!-- - do something on Locales[1] -->
+<!-- become very proficient with regular domains -->
 
-
-
-
-
-
-Domain types http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf
-
-http://chapel.cray.com/docs/1.14/primers/primers/distributions.html
-http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf
-builtin Locales variable
-- for loc in Locales {} followed by on loc {}
-- do something on Locales[1]
-become very proficient with regular domains
-
-
-
-# Advanced language features
+<!-- # Advanced language features -->
