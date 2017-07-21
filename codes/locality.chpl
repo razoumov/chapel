@@ -11,15 +11,15 @@ use Memory;
 //     writeln("MyLocaleArray[", i, "] is really locale ", here.id);
 // writeln();
 
-// writeln("there are ", numLocales, " locales");
-// for loc in Locales do   // this is still a serial program
-//   on loc {   // simply move the lines inside to locale loc
-//     writeln("locale #", here.id, "...");
-//     writeln("  ...is named: ", here.name);
-//     writeln("  ...has ", here.numPUs(), " processor cores");
-//     writeln("  ...has ", here.physicalMemory(unit=MemUnits.GB, retType=real), " GB of memory");
-//     writeln("  ...has ", here.maxTaskPar, " maximum parallelism");
-//   }
+writeln("there are ", numLocales, " locales");
+for loc in Locales do   // this is still a serial program
+  on loc {   // simply move the lines inside to locale loc
+    writeln("locale #", here.id, "...");
+    writeln("  ...is named: ", here.name);
+    writeln("  ...has ", here.numPUs(), " processor cores");
+    writeln("  ...has ", here.physicalMemory(unit=MemUnits.GB, retType=real), " GB of memory");
+    writeln("  ...has ", here.maxTaskPar, " maximum parallelism");
+  }
 
 // var x: int = 2;
 // on Locales[1 % numLocales] { // if numLocales=1 run on Locales[0], otherwise on Locales[1]

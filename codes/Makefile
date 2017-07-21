@@ -4,6 +4,8 @@ blocks: blocks.chpl
 	chpl -o $@ $^
 hello: hello6-taskpar-dist.chpl
 	chpl -o $@ $^
+locality: locality.chpl
+	chpl -o $@ $^
 pi: pi.chpl
 	chpl -o $@ $^
 clean:
