@@ -1,16 +1,20 @@
-You'll need to submit the relevant reservation for that day using (for instance)
+# Setup
 
-sbatch --reservation=def-guest_cpu_5 --account=def-guest
+You can find a copy of these notes at http://bit.ly/chapelnotes.
 
-There is a different reservation for each day of the school (def-guest_cpu_[5-8], since the reservations
-halt overnight. I would advise you to consult with Juan regarding the best way to obtain an interactive
-shell on the reservation using either salloc or sbatch, as I have very little experience in user-side
-operations of the scheduler.
+For submitting jobs on Graham we'll be using
 
+~~~
+sbatch ... --reservation=def-guest_cpu_5 --account=def-guest   # batch jobs
+salloc ... --reservation=def-guest_cpu_5 --account=def-guest   # interactive jobs
+~~~
 
+where the name of the reservation is unique for each day of the school:
 
-
-
+Monday: --reservation=def-guest_cpu_5  
+Tuesday: --reservation=def-guest_cpu_6  
+Wednesday: --reservation=def-guest_cpu_7  
+Thursday: --reservation=def-guest_cpu_8  
 
 # Introduction to heat equation
 
@@ -30,13 +34,41 @@ many things from learnChapelInYMinutes.chpl
 
 # Task parallelism
 
-explain how parallelism and locality are orthogonal things in Chapel => four examples
+Explain how parallelism and locality are orthogonal things in Chapel => four examples.
 
-for  
-forall  
-coforall  
-reduction  
-locality.chpl  
+- *for* is a serial loop to iterate over a range (forall i in 1..100 { some statements; })
+- *coforall* creates a new task for each iteration (run in random order!), the execution of the parent
+  task will not continue until all the children sync up
+- *forall* creates only a "reasonable" number of tasks, i.e. one per available core, unless overwritten
+  by "--dataParTasksPerLocale=..." at runtime; again, the execution of the parent task will not continue
+  until all the children sync up
+
+Reduction operations in task parallelism:
+
+~~~
+var counter = 0;
+forall a in 1..100 with (+ reduce counter) { // go in parallel
+  counter = 1;
+}
+writeln("actual number of threads = ", counter);
+~~~
+
+Other concepts in locality.chpl.
+
+There is a number of built-in variables to access locality information, illustrated by the following
+code:
+
+~~~
+writeln("there are ", numLocales, " locales");
+for loc in Locales do   // this is still a serial program
+  on loc {   // simply move the lines inside to locale loc
+    writeln("locale #", here.id, "...");
+    writeln("  ...is named: ", here.name);
+    writeln("  ...has ", here.numPUs(), " processor cores");
+    writeln("  ...has ", here.physicalMemory(unit=MemUnits.GB, retType=real), " GB of memory");
+    writeln("  ...has ", here.maxTaskPar, " maximum parallelism");
+  }
+~~~
 
 **Exercise**: write a task-parallel code to compute pi using the same algorithm as in pi.c (or pi.py) in
 the "Introduction to HPC" course. Use a reduction operation.
@@ -48,9 +80,9 @@ the "Introduction to HPC" course. Use a reduction operation.
 To run single-locale Chapel on Graham:
 
 ~~~ {.bash}
+. /home/razoumov/startSingleLocale.sh   # run the script under the current shell
 mkdir someDirectory && cd someDirectory   # cd ~/chapelCourse/codes
-chapelSingleLocale
-salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
+salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac # likely def-guest
 make test           # chpl test.chpl -o test
 ./test
 ~~~
@@ -121,11 +153,26 @@ Domains are fundamental Chapel concept for distributed-memory data parallelism. 
 this, we need to learn how to run multi-locale Chapel on Graham:
 
 ~~~ {.bash}
+. /home/razoumov/startMultiLocale.sh   # run the script under the current shell
 cd ~/chapelCourse/codes
-chapelMultiLocale   # load Chapel variables defined in ~/.bashrc
-salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
+salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac # likely def-guest
 make test        # chpl test.chpl -o test
 srun ./test_real -nl 2   # will run on two locales with max 3 cores per locale
+~~~
+
+And let's test this environment by running the following code that should print out information about the
+available locales inside your interactive job:
+
+~~~
+writeln("there are ", numLocales, " locales");
+for loc in Locales do   // this is still a serial program
+  on loc {   // simply move the lines inside to locale loc
+    writeln("locale #", here.id, "...");
+    writeln("  ...is named: ", here.name);
+    writeln("  ...has ", here.numPUs(), " processor cores");
+    writeln("  ...has ", here.physicalMemory(unit=MemUnits.GB, retType=real), " GB of memory");
+    writeln("  ...has ", here.maxTaskPar, " maximum parallelism");
+  }
 ~~~
 
 Let's now define an n^2 distributed (over several locales) domain distributedMesh mapped to locales in
@@ -181,6 +228,14 @@ On 4 locales we should get:
 {1..4, 5..8}  
 {5..8, 1..4}  
 {5..8, 5..8}  
+
+abc http://chapel.cray.com/docs/1.12/technotes/subquery.html
+http://chapel.cray.com/docs/1.14/users-guide/locality/localeTypeAndVariables.html
+
+
+
+
+
 
 Let's count the number of threads by adding the following to our code:
 
@@ -332,8 +387,8 @@ for step in 1..5 { // time-stepping
   forall (i,j) in Tnew.domain[1..n,1..n] do  
 instead of  
   forall (i,j) in mesh do  
-as the last one will run only in parallel on threads on locale 0, whereas the former will run on multiple
-locales in parallel.
+as the last one will run in parallel via threads only on locale 0, whereas the former will run on
+multiple locales in parallel.
 
 This is the entire parallel solver! Note that we implemented an open boundary: T in "ghost zones" is
 always 0. Let's add some printout and also compute the total energy on the mesh, by adding the following
@@ -386,40 +441,32 @@ on the "opposite ends", by adding the following to our code:
 
 Now total energy should be conserved, as nothing leaves the domain.
 
-## I/O
+# I/O
 
 Let's write the final solution to disk. There are several caveats:
 
 * works only with ASCII
-* it can also write a binary but it fails to be read anywhere (not the endians problem!)
-* would love to write NetCDF and HDF5: probably can do this by calling C/C++ functions from Chapel
+* Chapel can also write binary data but nothing can read it (checked: not the endians problem!)
+* would love to write NetCDF and HDF5, probably can do this by calling C/C++ functions from Chapel
 
 We'll add the following to our code to write ASCII:
 
 ~~~
-var myFile = open("output.dat", iomode.cw);
+var myFile = open("output.dat", iomode.cw); // open the file for writing
 var myWritingChannel = myFile.writer(); // create a writing channel starting at file offset 0
-myWritingChannel.write(T);
+myWritingChannel.write(T); // write the array
 myWritingChannel.close(); // close the channel
 ~~~
 
+Run the code and check the file *output.dat*: it should contain the array T after 5 steps in ASCII.
 
+<!-- Domain types http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf -->
 
+<!-- http://chapel.cray.com/docs/1.14/primers/primers/distributions.html -->
+<!-- http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf -->
+<!-- builtin Locales variable -->
+<!-- - for loc in Locales {} followed by on loc {} -->
+<!-- - do something on Locales[1] -->
+<!-- become very proficient with regular domains -->
 
-
-
-
-
-
-Domain types http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf
-
-http://chapel.cray.com/docs/1.14/primers/primers/distributions.html
-http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf
-builtin Locales variable
-- for loc in Locales {} followed by on loc {}
-- do something on Locales[1]
-become very proficient with regular domains
-
-
-
-# Advanced language features
+<!-- # Advanced language features -->

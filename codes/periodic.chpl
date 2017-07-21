@@ -28,7 +28,7 @@ for step in 1..5 {
 }
 
 // write the final step to disk in ASCII
-var myFile = open("sample.raw", iomode.cw); //iokind.dynamic, new iostyle(binary=1)); // binary not undertood in PV
+var myFile = open("output.dat", iomode.cw); //iokind.dynamic, new iostyle(binary=1)); // binary not undertood in PV
 var myWritingChannel = myFile.writer(); // create a writing channel starting at file offset 0
 myWritingChannel.write(T);
 myWritingChannel.close(); // close the channel

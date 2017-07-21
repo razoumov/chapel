@@ -2,6 +2,10 @@ test: test.chpl
 	chpl -o $@ $^
 blocks: blocks.chpl
 	chpl -o $@ $^
+evolution: evolution.chpl
+	chpl -o $@ $^
+periodic: periodic.chpl
+	chpl -o $@ $^
 hello: hello6-taskpar-dist.chpl
 	chpl -o $@ $^
 locality: locality.chpl
