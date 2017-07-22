@@ -1,3 +1,20 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Setup](#setup)
+- [Introduction to heat equation](#introduction-to-heat-equation)
+- [Chapel base language](#chapel-base-language)
+- [Task parallelism](#task-parallelism)
+- [Data parallelism](#data-parallelism)
+  - [Domains and single-locale data parallelism](#domains-and-single-locale-data-parallelism)
+  - [Distributed domains](#distributed-domains)
+  - [Diffusion solver on distributed domains](#diffusion-solver-on-distributed-domains)
+  - [Periodic boundary conditions](#periodic-boundary-conditions)
+- [I/O](#io)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Setup
 
 You can find a copy of these notes at http://bit.ly/chapelnotes.
@@ -37,8 +54,8 @@ many things from learnChapelInYMinutes.chpl
 Explain how parallelism and locality are orthogonal things in Chapel => four examples.
 
 - *for* is a serial loop to iterate over a range (forall i in 1..100 { some statements; })
-- *coforall* creates a new task for each iteration (run in random order!), the execution of the parent
-  task will not continue until all the children sync up
+- *coforall* creates a new task for each iteration (run in quasi-random order!), the execution of the
+  parent task will not continue until all the children sync up
 - *forall* creates only a "reasonable" number of tasks, i.e. one per available core, unless overwritten
   by "--dataParTasksPerLocale=..." at runtime; again, the execution of the parent task will not continue
   until all the children sync up
@@ -47,10 +64,18 @@ Reduction operations in task parallelism:
 
 ~~~
 var counter = 0;
-forall a in 1..100 with (+ reduce counter) { // go in parallel
+forall a in 1..100 with (+ reduce counter) { // parallel loop, one task per core
   counter = 1;
 }
 writeln("actual number of threads = ", counter);
+~~~
+
+Run it on a single locale with (show on my laptop):
+
+~~~
+make test
+./test
+./test --dataParTasksPerLocale=10
 ~~~
 
 Other concepts in locality.chpl.
@@ -60,7 +85,7 @@ code:
 
 ~~~
 writeln("there are ", numLocales, " locales");
-for loc in Locales do   // this is still a serial program
+for loc in Locales do   // this is still a serial program; Locales array contains an entry for each locale
   on loc {   // simply move the lines inside to locale loc
     writeln("locale #", here.id, "...");
     writeln("  ...is named: ", here.name);
@@ -77,12 +102,12 @@ the "Introduction to HPC" course. Use a reduction operation.
 
 ## Domains and single-locale data parallelism
 
-To run single-locale Chapel on Graham:
+To run single-locale Chapel on Graham, use --reservation=def-guest_cpu_5 --account=def-guest below:
 
 ~~~ {.bash}
 . /home/razoumov/startSingleLocale.sh   # run the script under the current shell
 mkdir someDirectory && cd someDirectory   # cd ~/chapelCourse/codes
-salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac # likely def-guest
+salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
 make test           # chpl test.chpl -o test
 ./test
 ~~~
@@ -118,6 +143,10 @@ Let's define an n^2 domain and print out
 (2) here.id = the ID of the locale on which the code is running (should be 0)  
 (3) here.maxTaskPar = the number of cores (max parallelism with 1 task/core) (should be 3)  
 
+**Note**: We already saw some of these variables/functions: numLocales, Locales, here.id here.name,
+here.numPUs(), here.physicalMemory(), here.maxTaskPar. There is also LocaleSpace which returns a
+numerical index of locales (whereas Locales array contains an entry for each locale).
+
 ~~~
 config const n = 8;
 const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory on a single locale
@@ -150,12 +179,13 @@ writeln(A);
 ## Distributed domains
 
 Domains are fundamental Chapel concept for distributed-memory data parallelism. But before we jump into
-this, we need to learn how to run multi-locale Chapel on Graham:
+this, we need to learn how to run multi-locale Chapel on Graham. Use the lines below with
+--reservation=def-guest_cpu_5 --account=def-guest:
 
 ~~~ {.bash}
 . /home/razoumov/startMultiLocale.sh   # run the script under the current shell
 cd ~/chapelCourse/codes
-salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac # likely def-guest
+salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
 make test        # chpl test.chpl -o test
 srun ./test_real -nl 2   # will run on two locales with max 3 cores per locale
 ~~~
@@ -187,6 +217,8 @@ We'll package output into each element of A as a string:
 a = "%i".format(int) + string + int  
 is a shortcut for  
 a = "%i".format(int) + string + "%i".format(int)  
+
+Slide: distributed domains.
 
 ~~~
 use BlockDist; // use standard block distribution module to partition the domain into blocks
@@ -229,13 +261,17 @@ On 4 locales we should get:
 {5..8, 1..4}  
 {5..8, 5..8}  
 
-abc http://chapel.cray.com/docs/1.12/technotes/subquery.html
-http://chapel.cray.com/docs/1.14/users-guide/locality/localeTypeAndVariables.html
+The following checks if the index set owned by a locale can be represented by a single domain:
 
+~~~
+for loc in Locales {
+  on loc {
+    writeln(A.hasSingleLocalSubdomain());
+  }
+}
+~~~
 
-
-
-
+In our case the answer should be yes.
 
 Let's count the number of threads by adding the following to our code:
 

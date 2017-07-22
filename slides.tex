@@ -1,7 +1,7 @@
 \documentclass[xcolor=svgnames,aspectratio=169]{beamer}
 
 \usetheme{Boadilla}
-\useoutertheme[subsection=false]{smoothbars}
+%\useoutertheme[subsection=false]{smoothbars}
 \usefonttheme{serif}
 \usecolortheme{seagull} % dove fly seagull
 \useinnertheme{rounded}
@@ -48,10 +48,10 @@
 
 \begin{document}
 
-\title[VisIt Workshop]{\LARGE Parallel programming in Chapel}
+\title[Chapel workshop]{\LARGE Parallel programming in Chapel}
 \author[]{{\large\sc Juan Zuniga}\\{\small juan.zuniga@usask.ca}\\\bigskip {\large\sc Alex
     Razoumov}\\{\small alex.razoumov@westgrid.ca}}
-\date[May 2017]{\textcolor{byzantium}{\footnotesize slides and code examples at at ...}}
+\date[July 2017]{}
 \institute[]{\includegraphics[width=0.25\columnwidth]{./logos/ccLogo}
   \hspace{.65cm}\includegraphics[width=0.35\columnwidth]{./logos/WG-Logo-Jan16}}
 
@@ -59,12 +59,9 @@
   \titlepage
 \end{frame}
 
-\section{Intro}
-\subsection{} % creates page markers at the top
-
 \newcommand{\tnij}{\ensuremath{T^{(n)}_{i,j}}}
 
-\begin{frame}{}
+\begin{frame}{Numerical problem}
   \begin{itemize}\setlength{\itemsep}{3mm}
     \item Simple 2D heat (diffusion) equation
     \[
@@ -83,7 +80,7 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{}
+\begin{frame}{Numerical problem}
   \begin{itemize}\setlength{\itemsep}{3mm}
     \item For simplicity assume $\Delta x=\Delta y=1$
     \item Use $\Delta t=1/4$ which is the upper limit of numerical stability
@@ -100,10 +97,6 @@
 
 % language syntax and the compiler, the notions of locality and parallelism and how they are orthogonal
 % concepts in Chapel
-
-\section{Chapel base language}
-\chapter{Chapel base language}
-\subsection{} % creates page markers at the top
 
 \begin{frame}{Why another language?}{\url{http://chapel.cray.com}}
   \begin{itemize}\setlength{\itemsep}{1mm}
@@ -128,16 +121,13 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Brief history}
-\end{frame}
-
 \begin{frame}{Useful links}
   \begin{itemize}\setlength{\itemsep}{3mm}
     \item Getting started guide for Python programmers
     {\small\url{http://chapel-for-python-programmers.readthedocs.io/basics.html}}
     \item Data parallelism in Chapel \url{http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf}
     \item Short tutorial from David Bunde \url{http://faculty.knox.edu/dbunde/teaching/chapel}
-    \item docs and examples for various Chapel modules in \texttt{\$CHPL\_HOME/modules/}, e.g.,
+    \item Docs and examples for various Chapel modules in \texttt{\$CHPL\_HOME/modules/}, e.g.,
     \texttt{standard/} or \texttt{dists/}
     \item \url{https://learnxinyminutes.com/docs/chapel}
     \item \url{https://stackoverflow.com/questions/tagged/chapel}
@@ -162,22 +152,12 @@
 
 % forall and coforall in abstract level
 
-\section{Task parallelism}
-\chapter{Task parallelism}
-\subsection{} % creates page markers at the top
-
 % revisiting the notion of locality, where in the hardware the tasks (or the different locales) are
 % running, parallel data structures, domain maps
 
-\section{Data parallelism}
-\chapter{Data parallelism}
-\subsection{} % creates page markers at the top
-
-\begin{frame}{}
-  \begin{itemize}\setlength{\itemsep}{3mm}
-    \item domain types \url{http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf}
-    \item two
-  \end{itemize}
+\begin{frame}{Distributed domains}
+  \includegraphics[width=1.0\columnwidth]{domains.pdf}
+  % domain types \url{http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf}
 \end{frame}
 
 
@@ -198,28 +178,6 @@
 
 % iterators, I/O files, modules and other packages?
 % how to call C/C++/Fortran functions from Chapel, especially popular numerical libraries
-
-\section{Advanced language features}
-\chapter{Advanced language features}
-\subsection{} % creates page markers at the top
-
-\begin{frame}{}
-  \begin{itemize}\setlength{\itemsep}{3mm}
-    \item one
-    \item two
-  \end{itemize}
-\end{frame}
-
-\section{Summary}
-\subsection{} % creates page markers at the top
-
-\begin{frame}{}
-  \begin{itemize}\setlength{\itemsep}{3mm}
-    \item one
-    \item two
-  \end{itemize}
-\end{frame}
-
 
 \end{document}
 
