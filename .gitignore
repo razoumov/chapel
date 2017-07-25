@@ -17,6 +17,7 @@ pi
 hidden
 hello
 periodic
+locality
 *_real
 output.dat
 test.chpl
