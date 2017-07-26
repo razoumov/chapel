@@ -22,8 +22,8 @@ You can find a copy of these notes at http://bit.ly/chapelnotes.
 For submitting jobs on Graham we'll be using
 
 ~~~
-sbatch ... --reservation=def-guest_cpu_5 --account=def-guest   # batch jobs
-salloc ... --reservation=def-guest_cpu_5 --account=def-guest   # interactive jobs
+sbatch ... --reservation=def-guest_cpu_6 --account=def-guest   # batch jobs
+salloc ... --reservation=def-guest_cpu_6 --account=def-guest   # interactive jobs
 ~~~
 
 where the name of the reservation is unique for each day of the school:
@@ -45,11 +45,32 @@ Slide: why another language?
 
 Slide: useful links.
 
-many things from learnChapelInYMinutes.chpl
+Note: many useful things in learnChapelInYMinutes.chpl.
 
-**Exercise**: show the bisection method slide.
+> ## Exercise 1
+> See the bisection method slide.
+>> ## Solution
+>> ~~~
+>> proc f(x: real) : real {
+>>   return x**5 + 8*x**3 - 2*x**2 + 5*x - 1.2;
+>> }
+>> var a = -1.0, b = 1.0;
+>> var c = (a+b)/2.0;
+>> var fa = f(a), fb = f(b), fc: real;
+>> while (max((c-a),(b-c)) >= 1.e-8) {
+>>   fc = f(c);
+>>   if (fa*fc < 0.0) then
+>>     b = c;
+>>   else
+>>     a = c;
+>>   c = (a+b)/2.0;
+>>   writef("%.8n  %.12n\n", c, max((c-a),(b-c)));
+>> }
+>> ~~~
 
 # Task parallelism
+
+Let's review some of the basic concepts we learned in the "task parallelism" section.
 
 Explain how parallelism and locality are orthogonal things in Chapel => four examples.
 
@@ -60,7 +81,8 @@ Explain how parallelism and locality are orthogonal things in Chapel => four exa
   by "--dataParTasksPerLocale=..." at runtime; again, the execution of the parent task will not continue
   until all the children sync up
 
-Reduction operations in task parallelism:
+Reduction operation in Chapel can be specified by a variable declared outside a loop and can be used with
+'forall' task parallelism:
 
 ~~~
 var counter = 0;
@@ -70,7 +92,8 @@ forall a in 1..100 with (+ reduce counter) { // parallel loop, one task per core
 writeln("actual number of threads = ", counter);
 ~~~
 
-Run it on a single locale with (show on my laptop):
+On a standalone computer (or a dedicated server) such as your laptop with single-locale Chapel installed,
+you would run a Chapel code with something like this:
 
 ~~~
 make test
@@ -78,14 +101,33 @@ make test
 ./test --dataParTasksPerLocale=10
 ~~~
 
+This will try to use all available CPU cores on the computer. Obviously, it would not be a good practice
+to run this on a cluster's login node, as it might try to use all cores on the node making it very slow
+for all users. Instead, we'll be submitting our compiled Chapel code to the scheduler. To run
+single-locale Chapel on Graham, use --reservation=def-guest_cpu_6 --account=def-guest below:
+
+~~~ {.bash}
+. /home/razoumov/startSingleLocale.sh   # run the script under the current shell
+mkdir someDirectory && cd someDirectory   # cd ~/chapelCourse/codes
+salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 \
+	--reservation=def-guest_cpu_6 --account=def-guest
+make test           # chpl test.chpl -o test
+./test
+./test --dataParTasksPerLocale=10
+~~~
+
+Try changing 'forall' to 'coforall' in the code above -- how does the reported number of threads change?
+
 Other concepts in locality.chpl.
 
 There is a number of built-in variables to access locality information, illustrated by the following
 code:
 
 ~~~
+use Memory;
 writeln("there are ", numLocales, " locales");
-for loc in Locales do   // this is still a serial program; Locales array contains an entry for each locale
+for loc in Locales do   // this is still a serial program; Locales array
+                        // contains an entry for each locale
   on loc {   // simply move the lines inside to locale loc
     writeln("locale #", here.id, "...");
     writeln("  ...is named: ", here.name);
@@ -95,22 +137,48 @@ for loc in Locales do   // this is still a serial program; Locales array contain
   }
 ~~~
 
-**Exercise**: write a task-parallel code to compute pi using the same algorithm as in pi.c (or pi.py) in
-the "Introduction to HPC" course. Use a reduction operation.
+> ## Exercise 2
+> Write a task-parallel code to compute pi using the same algorithm as in pi.c (or pi.py) in the
+> "Introduction to HPC" course. Use a reduction operation. Try timing this with different number of
+> threads, and then changing forall to coforall.
+>> ## Solution
+>> ~~~
+>> const pi = 3.14159265358979323846, n = 1000000;
+>> var i: int, h: real, sum: real = 0;
+>> h = 1.0 / n;
+>> forall i in 1..n with (+ reduce sum) {
+>>   var x = h * (i-0.5);
+>>   sum += 4.0 / (1.0+x**2);
+>> }
+>> sum *= h;
+>> writef("%i  %.12n  %.6n\n", n, sum, abs(sum-pi));
+>> ~~~
+
+Here is another version of the task-parallel diffusion solver (without time
+stepping) on a single locale:
+
+~~~
+const n = 100, stride = 20;
+var T: [0..n+1, 0..n+1] real;
+var Tnew: [1..n,1..n] real;
+var x, y: real;
+for (i,j) in {1..n,1..n} { // serial iteration
+  x = ((i:real)-0.5)/n;
+  y = ((j:real)-0.5)/n;
+  T[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2)/0.01); // narrow gaussian peak
+}
+coforall (i,j) in {1..n,1..n} by (stride,stride) { // 5x5 decomposition into 20x20 blocks => 25 tasks
+  for k in i..i+stride-1 { // serial loop inside each block
+    for l in j..j+stride-1 do {
+      Tnew[i,j] = (T[i-1,j] + T[i+1,j] + T[i,j-1] + T[i,j+1]) / 4;
+    }
+  }
+}
+~~~
 
 # Data parallelism
 
 ## Domains and single-locale data parallelism
-
-To run single-locale Chapel on Graham, use --reservation=def-guest_cpu_5 --account=def-guest below:
-
-~~~ {.bash}
-. /home/razoumov/startSingleLocale.sh   # run the script under the current shell
-mkdir someDirectory && cd someDirectory   # cd ~/chapelCourse/codes
-salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
-make test           # chpl test.chpl -o test
-./test
-~~~
 
 Recall: ranges are 1D sets of integer indices.
 
@@ -180,12 +248,13 @@ writeln(A);
 
 Domains are fundamental Chapel concept for distributed-memory data parallelism. But before we jump into
 this, we need to learn how to run multi-locale Chapel on Graham. Use the lines below with
---reservation=def-guest_cpu_5 --account=def-guest:
+--reservation=def-guest_cpu_6 --account=def-guest:
 
 ~~~ {.bash}
 . /home/razoumov/startMultiLocale.sh   # run the script under the current shell
 cd ~/chapelCourse/codes
-salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
+salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 \
+	--reservation=def-guest_cpu_6 --account=def-guest
 make test        # chpl test.chpl -o test
 srun ./test_real -nl 2   # will run on two locales with max 3 cores per locale
 ~~~
@@ -194,6 +263,7 @@ And let's test this environment by running the following code that should print 
 available locales inside your interactive job:
 
 ~~~
+use Memory;
 writeln("there are ", numLocales, " locales");
 for loc in Locales do   // this is still a serial program
   on loc {   // simply move the lines inside to locale loc
@@ -358,13 +428,15 @@ forall (i,j) in T.domain[1..n,1..n] {
 writeln(T);
 ~~~
 
-**Question**: why do we have  
-forall (i,j) in T.domain[1..n,1..n] {  
-and not  
-forall (i,j) in mesh
-
-**Answer**: the first one will run on multiple locales in parallel, whereas the second will run in
-parallel on multiple threads on locale 0 only, since "mesh" is defined on locale 0.
+> ## Question
+> Why do we have  
+> forall (i,j) in T.domain[1..n,1..n] {  
+> and not  
+> forall (i,j) in mesh
+>> ## Answer
+>> The first one will run on multiple locales in parallel, whereas the
+>> second will run in parallel on multiple threads on locale 0 only, since
+>> "mesh" is defined on locale 0.
 
 The code above will produce something like this:
 
@@ -402,14 +474,18 @@ The outer perimeter in the partition below should be "ghost zones":
 2 2 2 2 2 3 3 3 3 3  
 2 2 2 2 2 3 3 3 3 3  
 
-**Exercise**: in addition to here.id, also print the ID of the locale holding that value. Is it the same
-or different from here.id?
+> ## Exercise 3
+> In addition to here.id, also print the ID of the locale holding that value. Is it the same or different
+> from here.id?
+>> ## Solution
+>> Something along the lines:
+>>   m = "%i".format(here.id) + '-' + m.locale.id
 
 Now we implement the parallel solver, by adding the following to our code (*contains a mistake on
 purpose!*):
 
 ~~~
-var Tnew: [mesh] real;
+var Tnew: [largerMesh] real;
 for step in 1..5 { // time-stepping
   forall (i,j) in mesh do
     Tnew[i,j] = (T[i-1,j] + T[i+1,j] + T[i,j-1] + T[i,j+1]) / 4;
@@ -417,14 +493,37 @@ for step in 1..5 { // time-stepping
 }
 ~~~
 
-**Exercise**: can anyone see a mistake here?
+> ## Exercise 4
+> Can anyone see a mistake in the last code?
+>> ## Solution
+>> It should be  
+>>   forall (i,j) in Tnew.domain[1..n,1..n] do  
+>> instead of  
+>>   forall (i,j) in mesh do  
+>> as the last one will likely run in parallel via threads only on locale 0,
+>> whereas the former will run on multiple locales in parallel.
 
-**Answer**: it should be  
-  forall (i,j) in Tnew.domain[1..n,1..n] do  
-instead of  
-  forall (i,j) in mesh do  
-as the last one will run in parallel via threads only on locale 0, whereas the former will run on
-multiple locales in parallel.
+Here is the final version of the entire code:
+
+~~~
+use BlockDist;
+config const n = 8;
+const mesh: domain(2) = {1..n,1..n};
+const largerMesh: domain(2) dmapped Block(boundingBox=mesh) = {0..n+1,0..n+1};
+var T, Tnew: [largerMesh] real;
+forall (i,j) in T.domain[1..n,1..n] {
+  var x = ((i:real)-0.5)/(n:real);
+  var y = ((j:real)-0.5)/(n:real);
+  T[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2) / 0.01);
+}
+for step in 1..5 {
+  forall (i,j) in Tnew.domain[1..n,1..n] {
+    Tnew[i,j] = (T[i-1,j]+T[i+1,j]+T[i,j-1]+T[i,j+1])/4.0;
+  }
+  T = Tnew;
+  writeln((step,T[n/2,n/2],T[1,1]));
+}
+~~~
 
 This is the entire parallel solver! Note that we implemented an open boundary: T in "ghost zones" is
 always 0. Let's add some printout and also compute the total energy on the mesh, by adding the following
@@ -440,15 +539,15 @@ to our code:
 
 Notice how the total energy decreases in time with the open BCs: energy is leaving the system.
 
-**Exercise**: write a code in which here.id would be different from element.locale.id.
-
-Here is one possible solution in which we examine the locality of the finite-difference stencil:
-
-~~~
-var nodeID: [largerMesh] string;
-forall (i,j) in nodeID.domain[1..n,1..n] do
-  nodeID[i,j] = "%i".format(here.id) + '-' + nodeID[i,j].locale.id + '-' + nodeID[i-1,j].locale.id + '  ';
-~~~
+> ## Exercise 5
+> Write a code in which here.id would be different from element.locale.id.
+>> ## Solution
+>> Here is one possible solution in which we examine the locality of the finite-difference stencil:
+>> ~~~
+>> var nodeID: [largerMesh] string;
+>> forall (i,j) in nodeID.domain[1..n,1..n] do
+>>   nodeID[i,j] = "%i".format(here.id) + '-' + nodeID[i,j].locale.id + '-' + nodeID[i-1,j].locale.id + '  ';
+>> ~~~
 
 This produced the following output for me:
 
@@ -463,10 +562,9 @@ This produced the following output for me:
 
 ## Periodic boundary conditions
 
-Now let's modify the previous parallel solver to include periodic BCs.
-
-At the beginning of each time step we need to set elements in the ghost zones to their respective values
-on the "opposite ends", by adding the following to our code:
+Now let's modify the previous parallel solver to include periodic BCs. At the beginning of each time step
+we need to set elements in the ghost zones to their respective values on the "opposite ends", by adding
+the following to our code:
 
 ~~~
   T[0,1..n] = T[n,1..n]; // periodic boundaries on all four sides; these will run via parallel forall
