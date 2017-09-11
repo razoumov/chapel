@@ -1,158 +1,71 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+# Multi-local Chapel setup
 
-- [Setup](#setup)
-- [Introduction to heat equation](#introduction-to-heat-equation)
-- [Chapel base language](#chapel-base-language)
-- [Task parallelism](#task-parallelism)
-- [Data parallelism](#data-parallelism)
-  - [Domains and single-locale data parallelism](#domains-and-single-locale-data-parallelism)
-  - [Distributed domains](#distributed-domains)
-  - [Diffusion solver on distributed domains](#diffusion-solver-on-distributed-domains)
-  - [Periodic boundary conditions](#periodic-boundary-conditions)
-- [I/O](#io)
+So far we have been working with single-locale Chapel codes that may run on one or many cores on a single
+compute node, making use of the shared memory space and accelerating computations by launching concurrent
+tasks on individual cores in parallel. Chapel codes can also run on multiple nodes on a compute
+cluster. In Chapel this is referred to as `multi-locale` execution.
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-# Setup
-
-You can find a copy of these notes at http://bit.ly/chapelnotes.
-
-For submitting jobs on Graham we'll be using
+If you work inside a Chapel Docker container, e.g., chapel/chapel-gasnet, the container environment
+simulates a multi-locale cluster, so you would compile and launch multi-locale Chapel codes directly by
+specifying the number of locales with `-nl` flag:
 
 ~~~
-sbatch ... --reservation=def-guest_cpu_6 --account=def-guest   # batch jobs
-salloc ... --reservation=def-guest_cpu_6 --account=def-guest   # interactive jobs
+$ chpl --fast mycode.chpl -o mybinary
+$ ./mybinary -nl 4
 ~~~
+{:.input}
 
-where the name of the reservation is unique for each day of the school:
+Inside the Docker container on multiple locales your code will not run any faster than on a single
+locale, since you are emulating a virtual cluster, and all tasks run on the same physical node. To
+achieve actual speedup, you need to run your parallel multi-locale Chapel code on a real physical
+cluster which we hope you have access to for this session.
 
-Monday: --reservation=def-guest_cpu_5  
-Tuesday: --reservation=def-guest_cpu_6  
-Wednesday: --reservation=def-guest_cpu_7  
-Thursday: --reservation=def-guest_cpu_8  
+On a real HPC cluster you would need to submit either an interactive or a batch job asking for several
+nodes and then run a multi-locale Chapel code inside that job. In practice, the exact commands depend on
+how the multi-locale Chapel was built on the cluster.
 
-# Introduction to heat equation
-
-Slide: original 2D diffusion equation, discretized equation with forward Euler (explicit) time stepping.
-
-Slide: assumptions, the final 2D finite-difference equation.
-
-# Chapel base language
-
-Slide: why another language?
-
-Slide: useful links.
-
-Note: many useful things in learnChapelInYMinutes.chpl.
-
-> ## Exercise 1
-> See the bisection method slide.
->> ## Solution
->> ~~~
->> proc f(x: real) : real {
->>   return x**5 + 8*x**3 - 2*x**2 + 5*x - 1.2;
->> }
->> var a = -1.0, b = 1.0;
->> var c = (a+b)/2.0;
->> var fa = f(a), fb = f(b), fc: real;
->> while (max((c-a),(b-c)) >= 1.e-8) {
->>   fc = f(c);
->>   if (fa*fc < 0.0) then
->>     b = c;
->>   else
->>     a = c;
->>   c = (a+b)/2.0;
->>   writef("%.8n  %.12n\n", c, max((c-a),(b-c)));
->> }
->> ~~~
-
-# Task parallelism
-
-Let's review some of the basic concepts we learned in the "task parallelism" section.
-
-Explain how parallelism and locality are orthogonal things in Chapel => four examples.
-
-- *for* is a serial loop to iterate over a range (forall i in 1..100 { some statements; })
-- *coforall* creates a new task for each iteration (run in quasi-random order!), the execution of the
-  parent task will not continue until all the children sync up
-- *forall* creates only a "reasonable" number of tasks, i.e. one per available core, unless overwritten
-  by "--dataParTasksPerLocale=..." at runtime; again, the execution of the parent task will not continue
-  until all the children sync up
-
-Reduction operation in Chapel can be specified by a variable declared outside a loop and can be used with
-'forall' task parallelism:
+When you compile a Chapel code with the multi-locale Chapel compiler, two binaries will be produced. One
+is called `mybinary` and is a launcher binary used to submit the real executable `mybinary_real`. If the
+Chapel environment is configured properly with the launcher for the cluster's physical interconnect
+(which might not be always possible due to a number of factors), then you would simply compile the code
+and use the launcher binary `mybinary` to submit the job to the queue:
 
 ~~~
-var counter = 0;
-forall a in 1..100 with (+ reduce counter) { // parallel loop, one task per core
-  counter = 1;
-}
-writeln("actual number of threads = ", counter);
+$ chpl --fast mycode.chpl -o mybinary
+$ ./mybinary -nl 2
 ~~~
+{:.input}
 
-On a standalone computer (or a dedicated server) such as your laptop with single-locale Chapel installed,
-you would run a Chapel code with something like this:
+The exact parameters of the job such as the maximum runtime and the requested memory can be specified
+with Chapel environment variables.
 
-~~~
-make test
-./test
-./test --dataParTasksPerLocale=10
-~~~
-
-This will try to use all available CPU cores on the computer. Obviously, it would not be a good practice
-to run this on a cluster's login node, as it might try to use all cores on the node making it very slow
-for all users. Instead, we'll be submitting our compiled Chapel code to the scheduler. To run
-single-locale Chapel on Graham, use --reservation=def-guest_cpu_6 --account=def-guest below:
-
-~~~ {.bash}
-. /home/razoumov/startSingleLocale.sh   # run the script under the current shell
-mkdir someDirectory && cd someDirectory   # cd ~/chapelCourse/codes
-salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 \
-	--reservation=def-guest_cpu_6 --account=def-guest
-make test           # chpl test.chpl -o test
-./test
-./test --dataParTasksPerLocale=10
-~~~
-
-Try changing 'forall' to 'coforall' in the code above -- how does the reported number of threads change?
-
-Other concepts in locality.chpl.
-
-There is a number of built-in variables to access locality information, illustrated by the following
-code:
+The Compute Canada clusters Cedar and Graham employ two different physical interconnects, and since we
+use exactly the same multi-locale Chapel module on both clusters
 
 ~~~
-use Memory;
-writeln("there are ", numLocales, " locales");
-for loc in Locales do   // this is still a serial program; Locales array
-                        // contains an entry for each locale
-  on loc {   // simply move the lines inside to locale loc
-    writeln("locale #", here.id, "...");
-    writeln("  ...is named: ", here.name);
-    writeln("  ...has ", here.numPUs(), " processor cores");
-    writeln("  ...has ", here.physicalMemory(unit=MemUnits.GB, retType=real), " GB of memory");
-    writeln("  ...has ", here.maxTaskPar, " maximum parallelism");
-  }
+$ module load gcc
+$ module load chapel-slurm-gasnetrun_ibv/1.15.0
+$ export GASNET_PHYSMEM_MAX=1G      # needed for faster job launch
+$ export GASNET_PHYSMEM_NOPROBE=1   # needed for faster job launch
 ~~~
+{:.input}
 
-> ## Exercise 2
-> Write a task-parallel code to compute pi using the same algorithm as in pi.c (or pi.py) in the
-> "Introduction to HPC" course. Use a reduction operation. Try timing this with different number of
-> threads, and then changing forall to coforall.
->> ## Solution
->> ~~~
->> const pi = 3.14159265358979323846, n = 1000000;
->> var i: int, h: real, sum: real = 0;
->> h = 1.0 / n;
->> forall i in 1..n with (+ reduce sum) {
->>   var x = h * (i-0.5);
->>   sum += 4.0 / (1.0+x**2);
->> }
->> sum *= h;
->> writef("%i  %.12n  %.6n\n", n, sum, abs(sum-pi));
->> ~~~
+we cannot configure the same single launcher for both. Therefore, we launch multi-locale Chapel codes
+using the real executable `mybinary_real`. For example, for an interactive job you would type:
+
+~~~
+$ salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-guest
+$ chpl --fast mycode.chpl -o mybinary
+$ srun ./mybinary_real -nl 2   # will run on two locales with max 3 cores per locale
+~~~
+{:.input}
+
+Production jobs would be launched with `sbatch` command and a Slurm launch script as usual.
+
+
+
+
+
 
 Here is another version of the task-parallel diffusion solver (without time
 stepping) on a single locale:
@@ -175,6 +88,13 @@ coforall (i,j) in {1..n,1..n} by (stride,stride) { // 5x5 decomposition into 20x
   }
 }
 ~~~
+{:.source}
+
+
+
+
+
+
 
 # Data parallelism
 
@@ -189,6 +109,7 @@ var rangeatob: range = a..b; // using variables
 var range2to10by2: range(stridable=true) = 2..10 by 2; // 2, 4, 6, 8, 10
 var range1toInf = 1.. ; // unbounded range
 ~~~
+{:.source}
 
 Recall: domains are bounded multi-dimensional sets of integer indices.
 
@@ -204,6 +125,7 @@ for (x,y) in twoDimensions {
   write("(", x, ", ", y, ")", ", "); // these tuples can also be deconstructed
 }
 ~~~
+{:.source}
 
 Let's define an n^2 domain and print out
 
@@ -223,6 +145,7 @@ forall t in T { // go in parallel through all n^2 elements of T
   writeln((t.locale.id,here.id,here.maxTaskPar));
 }
 ~~~
+{:.source}
 
 By the way, how do we access indices of T?
 
@@ -231,6 +154,7 @@ forall t in T.domain {
   writeln(t);   // t is a tuple (i,j)
 }
 ~~~
+{:.source}
 
 How can we define multiple arrays on the same mesh?
 
@@ -243,6 +167,7 @@ forall (a,b,c) in zip(A,B,C) do // parallel loop
   a = b + alpha*c;   // simple example of data parallelism on a single locale
 writeln(A);
 ~~~
+{:.source}
 
 ## Distributed domains
 
@@ -250,7 +175,7 @@ Domains are fundamental Chapel concept for distributed-memory data parallelism. 
 this, we need to learn how to run multi-locale Chapel on Graham. Use the lines below with
 --reservation=def-guest_cpu_6 --account=def-guest:
 
-~~~ {.bash}
+~~~
 . /home/razoumov/startMultiLocale.sh   # run the script under the current shell
 cd ~/chapelCourse/codes
 salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 \
@@ -258,6 +183,7 @@ salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 \
 make test        # chpl test.chpl -o test
 srun ./test_real -nl 2   # will run on two locales with max 3 cores per locale
 ~~~
+{:.input}
 
 And let's test this environment by running the following code that should print out information about the
 available locales inside your interactive job:
@@ -274,6 +200,7 @@ for loc in Locales do   // this is still a serial program
     writeln("  ...has ", here.maxTaskPar, " maximum parallelism");
   }
 ~~~
+{:.source}
 
 Let's now define an n^2 distributed (over several locales) domain distributedMesh mapped to locales in
 blocks. On top of this domain we define a 2D block-distributed array A of strings mapped to locales in
@@ -302,9 +229,11 @@ forall a in A { // go in parallel through all n^2 elements in A
 }
 writeln(A);
 ~~~~
+{:.source}
 
 Let's try to run this on 1, 2, 4 locales. Here is an example on 4 locales with 1 core/local:
 
+~~~
 0-gra796-1   0-gra796-1   0-gra796-1   0-gra796-1   1-gra797-1   1-gra797-1   1-gra797-1   1-gra797-1  
 0-gra796-1   0-gra796-1   0-gra796-1   0-gra796-1   1-gra797-1   1-gra797-1   1-gra797-1   1-gra797-1  
 0-gra796-1   0-gra796-1   0-gra796-1   0-gra796-1   1-gra797-1   1-gra797-1   1-gra797-1   1-gra797-1  
@@ -313,6 +242,8 @@ Let's try to run this on 1, 2, 4 locales. Here is an example on 4 locales with 1
 2-gra798-1   2-gra798-1   2-gra798-1   2-gra798-1   3-gra799-1   3-gra799-1   3-gra799-1   3-gra799-1  
 2-gra798-1   2-gra798-1   2-gra798-1   2-gra798-1   3-gra799-1   3-gra799-1   3-gra799-1   3-gra799-1  
 2-gra798-1   2-gra798-1   2-gra798-1   2-gra798-1   3-gra799-1   3-gra799-1   3-gra799-1   3-gra799-1  
+~~~
+{:.output}
 
 Now print the range of indices for each sub-domain by adding the following to our code:
 
@@ -323,13 +254,17 @@ for loc in Locales {
   }
 }
 ~~~
+{:.source}
 
 On 4 locales we should get:
 
+~~~
 {1..4, 1..4}  
 {1..4, 5..8}  
 {5..8, 1..4}  
 {5..8, 5..8}  
+~~~
+{:.output}
 
 The following checks if the index set owned by a locale can be represented by a single domain:
 
@@ -340,6 +275,7 @@ for loc in Locales {
   }
 }
 ~~~
+{:.source}
 
 In our case the answer should be yes.
 
@@ -352,6 +288,7 @@ forall a in A with (+ reduce counter) { // go in parallel through all n^2 elemen
 }
 writeln("actual number of threads = ", counter);
 ~~~
+{:.source}
 
 Does the number make sense? If running on a large number of cores, the result will depend heavily depends
 on n (the size of the domain): for large n=30 will maximize the number of threads on each locale, for
@@ -375,7 +312,9 @@ forall a in A2 {
 }
 writeln(A2);
 ~~~
+{:.source}
 
+~~~
 0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1  
 2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1  
 0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1  
@@ -384,6 +323,8 @@ writeln(A2);
 2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1  
 0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1  
 2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1  
+~~~
+{:.output}
 
 Again let's print the range of indices for each sub-domain by adding the following to our code:
 
@@ -394,11 +335,15 @@ for loc in Locales {
   }
 }
 ~~~
+{:.source}
 
+~~~
 {1..7 by 2, 1..7 by 2}  
 {1..7 by 2, 2..8 by 2}  
 {2..8 by 2, 1..7 by 2}  
 {2..8 by 2, 2..8 by 2}  
+~~~
+{:.output}
 
 There are quite a few predefined distributions: BlockDist, CyclicDist, BlockCycDist, ReplicatedDist,
 DimensionalDist2D, ReplicatedDim, BlockCycDim - for details see
@@ -413,6 +358,7 @@ use BlockDist;
 config const n = 8;
 const mesh: domain(2) = {1..n, 1..n};  // local 2D n^2 domain
 ~~~
+{:.source}
 
 We will add a larger (n+2)^2 block-distributed domain largerMesh with one-cell-wide "ghost zones" on "end
 locales", and define a temperature array T on top of it, by adding the following to our code:
@@ -427,6 +373,7 @@ forall (i,j) in T.domain[1..n,1..n] {
 }
 writeln(T);
 ~~~
+{:.source}
 
 > ## Question
 > Why do we have  
@@ -437,19 +384,23 @@ writeln(T);
 >> The first one will run on multiple locales in parallel, whereas the
 >> second will run in parallel on multiple threads on locale 0 only, since
 >> "mesh" is defined on locale 0.
+>> {:.source}
 
 The code above will produce something like this:
 
- 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0  
- 0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0  
- 0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0  
- 0.0 1.44716e-10 1.70619e-06 0.000883826 0.0201158 0.0201158 0.000883826 1.70619e-06 1.44716e-10 0.0  
- 0.0 3.29371e-09 3.88326e-05 0.0201158 0.457833 0.457833 0.0201158 3.88326e-05 3.29371e-09 0.0  
- 0.0 3.29371e-09 3.88326e-05 0.0201158 0.457833 0.457833 0.0201158 3.88326e-05 3.29371e-09 0.0  
- 0.0 1.44716e-10 1.70619e-06 0.000883826 0.0201158 0.0201158 0.000883826 1.70619e-06 1.44716e-10 0.0  
- 0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0  
- 0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0  
- 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0  
+~~~
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0  
+0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0  
+0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0  
+0.0 1.44716e-10 1.70619e-06 0.000883826 0.0201158 0.0201158 0.000883826 1.70619e-06 1.44716e-10 0.0  
+0.0 3.29371e-09 3.88326e-05 0.0201158 0.457833 0.457833 0.0201158 3.88326e-05 3.29371e-09 0.0  
+0.0 3.29371e-09 3.88326e-05 0.0201158 0.457833 0.457833 0.0201158 3.88326e-05 3.29371e-09 0.0  
+0.0 1.44716e-10 1.70619e-06 0.000883826 0.0201158 0.0201158 0.000883826 1.70619e-06 1.44716e-10 0.0  
+0.0 2.79367e-13 3.29371e-09 1.70619e-06 3.88326e-05 3.88326e-05 1.70619e-06 3.29371e-09 2.79367e-13 0.0  
+0.0 2.36954e-17 2.79367e-13 1.44716e-10 3.29371e-09 3.29371e-09 1.44716e-10 2.79367e-13 2.36954e-17 0.0  
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0  
+~~~
+{:.output}
 
 Lets define an array of strings nodeID with the same distribution over locales as T, by adding the
 following to our code:
@@ -460,9 +411,11 @@ forall m in nodeID do
   m = "%i".format(here.id);
 writeln(nodeID);
 ~~~
+{:.source}
 
 The outer perimeter in the partition below should be "ghost zones":
 
+~~~
 0 0 0 0 0 1 1 1 1 1  
 0 0 0 0 0 1 1 1 1 1  
 0 0 0 0 0 1 1 1 1 1  
@@ -473,6 +426,8 @@ The outer perimeter in the partition below should be "ghost zones":
 2 2 2 2 2 3 3 3 3 3  
 2 2 2 2 2 3 3 3 3 3  
 2 2 2 2 2 3 3 3 3 3  
+~~~
+{:.output}
 
 > ## Exercise 3
 > In addition to here.id, also print the ID of the locale holding that value. Is it the same or different
@@ -492,6 +447,7 @@ for step in 1..5 { // time-stepping
   T[mesh] = Tnew[mesh]; // uses parallel forall underneath
 }
 ~~~
+{:.source}
 
 > ## Exercise 4
 > Can anyone see a mistake in the last code?
@@ -524,6 +480,7 @@ for step in 1..5 {
   writeln((step,T[n/2,n/2],T[1,1]));
 }
 ~~~
+{:.source}
 
 This is the entire parallel solver! Note that we implemented an open boundary: T in "ghost zones" is
 always 0. Let's add some printout and also compute the total energy on the mesh, by adding the following
@@ -536,6 +493,7 @@ to our code:
     total += T[i,j];
   writeln("total = ", total);
 ~~~
+{:.source}
 
 Notice how the total energy decreases in time with the open BCs: energy is leaving the system.
 
@@ -551,14 +509,17 @@ Notice how the total energy decreases in time with the open BCs: energy is leavi
 
 This produced the following output for me:
 
- 0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
- 0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
- 0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
- 0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
- 2-2-0   2-2-0   2-2-0   2-2-0   3-3-1   3-3-1   3-3-1   3-3-1  
- 2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
- 2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
- 2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
+~~~
+0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
+0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
+0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
+0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
+2-2-0   2-2-0   2-2-0   2-2-0   3-3-1   3-3-1   3-3-1   3-3-1  
+2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
+2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
+2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
+~~~
+{:.output}
 
 ## Periodic boundary conditions
 
@@ -572,6 +533,7 @@ the following to our code:
   T[1..n,0] = T[1..n,n];
   T[1..n,n+1] = T[1..n,1];
 ~~~
+{:.source}
 
 Now total energy should be conserved, as nothing leaves the domain.
 
@@ -591,6 +553,7 @@ var myWritingChannel = myFile.writer(); // create a writing channel starting at 
 myWritingChannel.write(T); // write the array
 myWritingChannel.close(); // close the channel
 ~~~
+{:.source}
 
 Run the code and check the file *output.dat*: it should contain the array T after 5 steps in ASCII.
 

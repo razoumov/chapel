@@ -23,11 +23,59 @@ Chapel source code must be written in text files with the extension **_.chpl_**.
 ~~~
 {:.input}
 
-The flag `--fast` indicates the compiler to optimize the binary to run as fast as possible in the given architecture. 
+The flag `--fast` indicates the compiler to optimize the binary to run as fast as possible in the given architecture.
 
 Chapel was designed from scratch as a new programming language. It is an imperative language with its own syntax (with elements similar to C) that we must know before introducing the parallel programming concepts. 
 
 In this lesson we will learn the basic elements and syntax of the language; then we will study **_task parallelism_**, the first level of parallelism in Chapel, and finally we will use parallel data structures and **_data parallelism_**, which is the higher level of abstraction, in parallel programming, offered by Chapel. 
+
+To run the code, you can simply type:
+
+~~~
+>> ./mybinary
+~~~
+{:.input}
+
+Depending on the code, it might utilize several or even all cores on the current node. The command above
+implies that you are allowed to utilize all cores. This might not be the case on an HPC cluster, where a
+login node is shared by many people at the same time, and where it might not be a good idea to occupy all
+cores on a login node with CPU-intensive tasks.
+
+On Compute Canada clusters Cedar and Graham we have two versions of Chapel, one is a single-locale
+(single-node) Chapel, and the other is a multi-locale (multi-node) Chapel. For now, we will start with
+single-locale Chapel. If you are logged into Cedar or Graham, you'll need to load the single-locale
+Chapel module:
+
+~~~
+>> module load gcc
+>> module load chapel-single/1.15.0
+~~~
+{:.input}
+
+Then, for running a test code on a cluster you would submit an interactive job to the queue
+
+~~~
+>> salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-guest
+~~~
+{:.input}
+
+and then inside that job compile and run the test code
+
+~~~
+>> chpl --fast mycode.chpl -o mybinary
+>> ./mybinary
+~~~
+{:.input}
+
+For production jobs, you would compile the code and then submit a batch script to the queue:
+
+~~~
+>> chpl --fast mycode.chpl -o mybinary
+>> sbatch script.sh
+~~~
+{:.input}
+
+where the script `script.sh` would set all Slurm variables and call the executable `mybinary`.
 
 ### Case study
 

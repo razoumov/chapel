@@ -21,3 +21,5 @@ locality
 *_real
 output.dat
 test.chpl
+*.html
+teachingNotes.md
