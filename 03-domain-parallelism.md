@@ -37,7 +37,9 @@ $ ./mybinary -nl 2
 {:.input}
 
 The exact parameters of the job such as the maximum runtime and the requested memory can be specified
-with Chapel environment variables.
+with Chapel environment variables. One drawback of this launching method is that Chapel will have access
+to all physical cores on each node participating in the run -- this will present problems if you are
+scheduling jobs by-core and not by-node, since part of a node should be allocated to someone else's job.
 
 The Compute Canada clusters Cedar and Graham employ two different physical interconnects, and since we
 use exactly the same multi-locale Chapel module on both clusters
@@ -54,145 +56,86 @@ we cannot configure the same single launcher for both. Therefore, we launch mult
 using the real executable `mybinary_real`. For example, for an interactive job you would type:
 
 ~~~
-$ salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-guest
+$ salloc --time=0:30:0 --nodes=4 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-guest
 $ chpl --fast mycode.chpl -o mybinary
-$ srun ./mybinary_real -nl 2   # will run on two locales with max 3 cores per locale
+$ srun ./mybinary_real -nl 4   # will run on four locales with max 3 cores per locale
 ~~~
 {:.input}
 
 Production jobs would be launched with `sbatch` command and a Slurm launch script as usual.
 
+For the rest of this class we assume that you have a working multi-locale Chapel environment, whether
+provided by a Docker container or by multi-locale Chapel on a physical HPC cluster.
 
+# Simple multi-locale codes
 
-
-
-
-Here is another version of the task-parallel diffusion solver (without time
-stepping) on a single locale:
+Let us test our multi-locale Chapel environment by launching the following code:
 
 ~~~
-const n = 100, stride = 20;
-var T: [0..n+1, 0..n+1] real;
-var Tnew: [1..n,1..n] real;
-var x, y: real;
-for (i,j) in {1..n,1..n} { // serial iteration
-  x = ((i:real)-0.5)/n;
-  y = ((j:real)-0.5)/n;
-  T[i,j] = exp(-((x-0.5)**2 + (y-0.5)**2)/0.01); // narrow gaussian peak
-}
-coforall (i,j) in {1..n,1..n} by (stride,stride) { // 5x5 decomposition into 20x20 blocks => 25 tasks
-  for k in i..i+stride-1 { // serial loop inside each block
-    for l in j..j+stride-1 do {
-      Tnew[i,j] = (T[i-1,j] + T[i+1,j] + T[i,j-1] + T[i,j+1]) / 4;
-    }
-  }
-}
+writeln(Locales);
 ~~~
 {:.source}
 
-
-
-
-
-
-
-# Data parallelism
-
-## Domains and single-locale data parallelism
-
-Recall: ranges are 1D sets of integer indices.
+This code will print the built-in global array `Locales`. Running it on four locales will produce
 
 ~~~
-var range1to10: range = 1..10; // 1, 2, 3, ..., 10
-var a = 1234, b = 5678;
-var rangeatob: range = a..b; // using variables
-var range2to10by2: range(stridable=true) = 2..10 by 2; // 2, 4, 6, 8, 10
-var range1toInf = 1.. ; // unbounded range
+LOCALE0 LOCALE1 LOCALE2 LOCALE3
 ~~~
-{:.source}
+{:.output}
 
-Recall: domains are bounded multi-dimensional sets of integer indices.
+We want to run some code on each locale (node). For that, we can cycle through locales:
 
 ~~~
-var domain1to10: domain(1) = {1..10};        // 1D domain from 1 to 10
-var twoDimensions: domain(2) = {-2..2,0..2}; // 2D domain over a product of ranges
-var thirdDim: range = 1..16;
-var threeDims: domain(3) = {thirdDim, 1..10, 5..10}; // 3D domain using a range variable
-for idx in twoDimensions do
-  write(idx, ", ");
-writeln();
-for (x,y) in twoDimensions {
-  write("(", x, ", ", y, ")", ", "); // these tuples can also be deconstructed
-}
+for loc in Locales do   // this is still a serial program
+  on loc do             // run the next line on locale `loc`
+    writeln("this locale is named ", here.name);
 ~~~
-{:.source}
+{:.output}
 
-Let's define an n^2 domain and print out
-
-(1) t.locale.id = the ID of the locale holding the element t of T (should be 0)  
-(2) here.id = the ID of the locale on which the code is running (should be 0)  
-(3) here.maxTaskPar = the number of cores (max parallelism with 1 task/core) (should be 3)  
-
-**Note**: We already saw some of these variables/functions: numLocales, Locales, here.id here.name,
-here.numPUs(), here.physicalMemory(), here.maxTaskPar. There is also LocaleSpace which returns a
-numerical index of locales (whereas Locales array contains an entry for each locale).
+This will produce
 
 ~~~
-config const n = 8;
-const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory on a single locale
-var T: [mesh] real; // a 2D array of reals defined in shared memory on a single locale (mapped onto this domain)
-forall t in T { // go in parallel through all n^2 elements of T
-  writeln((t.locale.id,here.id,here.maxTaskPar));
-}
+this locale is named cdr544
+this locale is named cdr552
+this locale is named cdr556
+this locale is named cdr692
+~~~
+{:.output}
+
+Here the built-in variable class `here` refers to the locale on which the code is running, and
+`here.name` is its hostname. We started a serial `for` loop cycling through all locales, and on each
+locale we printed its name, i.e., the hostname of each node. This program ran in serial starting a task
+on each locale only after completing the same task on the previous locale. Note the order in which
+locales were listed.
+
+To run this code in parallel, starting four simultaneous tasks, one per locale, we simply need to replace
+`for` with `forall`:
+
+~~~
+forall loc in Locales do   // now this is a parallel loop
+  on loc do
+    writeln("this locale is named ", here.name);
 ~~~
 {:.source}
 
-By the way, how do we access indices of T?
+This starts four tasks in parallel, and the order in which the print statement is executed depends on the
+runtime conditions and can change from run to run:
 
 ~~~
-forall t in T.domain {
-  writeln(t);   // t is a tuple (i,j)
-}
+this locale is named cdr544
+this locale is named cdr692
+this locale is named cdr556
+this locale is named cdr552
 ~~~
-{:.source}
+{:.output}
 
-How can we define multiple arrays on the same mesh?
-
-~~~
-const grid = {1..100}; // 1D domain
-const alpha = 5; // some number
-var A, B, C: [grid] real; // local arrays on this 1D domain
-B = 2; C = 3;
-forall (a,b,c) in zip(A,B,C) do // parallel loop
-  a = b + alpha*c;   // simple example of data parallelism on a single locale
-writeln(A);
-~~~
-{:.source}
-
-## Distributed domains
-
-Domains are fundamental Chapel concept for distributed-memory data parallelism. But before we jump into
-this, we need to learn how to run multi-locale Chapel on Graham. Use the lines below with
---reservation=def-guest_cpu_6 --account=def-guest:
-
-~~~
-. /home/razoumov/startMultiLocale.sh   # run the script under the current shell
-cd ~/chapelCourse/codes
-salloc --time=0:30:0 --nodes=2 --cpus-per-task=3 --mem-per-cpu=1000 \
-	--reservation=def-guest_cpu_6 --account=def-guest
-make test        # chpl test.chpl -o test
-srun ./test_real -nl 2   # will run on two locales with max 3 cores per locale
-~~~
-{:.input}
-
-And let's test this environment by running the following code that should print out information about the
-available locales inside your interactive job:
+We can print few other attributes of each locale. Here it is actually useful to revert to the serial loop
+`for` so that the print statements appear in order:
 
 ~~~
 use Memory;
-writeln("there are ", numLocales, " locales");
-for loc in Locales do   // this is still a serial program
-  on loc {   // simply move the lines inside to locale loc
+for loc in Locales do
+  on loc {
     writeln("locale #", here.id, "...");
     writeln("  ...is named: ", here.name);
     writeln("  ...has ", here.numPUs(), " processor cores");
@@ -202,7 +145,171 @@ for loc in Locales do   // this is still a serial program
 ~~~
 {:.source}
 
-Let's now define an n^2 distributed (over several locales) domain distributedMesh mapped to locales in
+~~~
+locale #0...
+  ...is named: cdr544
+  ...has 3 processor cores
+  ...has 125.804 GB of memory
+  ...has 3 maximum parallelism
+locale #1...
+  ...is named: cdr552
+  ...has 3 processor cores
+  ...has 125.804 GB of memory
+  ...has 3 maximum parallelism
+locale #2...
+  ...is named: cdr556
+  ...has 3 processor cores
+  ...has 125.804 GB of memory
+  ...has 3 maximum parallelism
+locale #3...
+  ...is named: cdr692
+  ...has 3 processor cores
+  ...has 125.804 GB of memory
+  ...has 3 maximum parallelism
+~~~
+{:.output}
+
+Note that while Chapel correctly determines the number of cores available inside our job on each node,
+and the maximum parallelism (which is the same as the number of cores available!), it lists the total
+physical memory on each node available to all running jobs which is not the same as the total memory per
+node allocated to our job.
+
+# Data parallelism
+
+## Domains and single-locale data parallelism
+
+We start this section by recalling the definition of a range in Chapel. A range is a 1D set of integer
+indices that can be bounded or infinite:
+
+~~~
+var oneToTen: range = 1..10; // 1, 2, 3, ..., 10
+var a = 1234, b = 5678;
+var aToB: range = a..b; // using variables
+var twoToTenByTwo: range(stridable=true) = 2..10 by 2; // 2, 4, 6, 8, 10
+var oneToInf = 1.. ; // unbounded range
+~~~
+{:.source}
+
+On the other hand, domains are multi-dimensional (including 1D) sets of integer indices that are always
+bounded. To stress the difference between domain ranges and domains, domain definitions always enclose
+their indices in curly brackets. Ranges can be used to define a specific dimension of a domain:
+
+~~~
+var domain1to10: domain(1) = {1..10};        // 1D domain from 1 to 10 defined using the range 1..10
+var twoDimensions: domain(2) = {-2..2,0..2}; // 2D domain over a product of two ranges
+var thirdDim: range = 1..16; // a range
+var threeDims: domain(3) = {thirdDim, 1..10, 5..10}; // 3D domain over a product of three ranges
+for idx in twoDimensions do // cycle through all points in a 2D domain
+  write(idx, ", ");
+writeln();
+for (x,y) in twoDimensions { // can also cycle using explicit tuples (x,y)
+  write("(", x, ", ", y, ")", ", ");
+}
+~~~
+{:.source}
+
+Let's define an n^2 domain called `mesh`. It is defined by the single task in our code and is therefore
+defined in memory on the same node (locale 0) where this task is running. For each of n^2 mesh points,
+let's print out
+
+(1) m.locale.id = the ID of the locale holding that mesh point (should be 0)  
+(2) here.id = the ID of the locale on which the code is running (should be 0)  
+(3) here.maxTaskPar = the number of cores (max parallelism with 1 task/core) (should be 3)  
+
+**Note**: We already saw some of these variables/functions: numLocales, Locales, here.id, here.name,
+here.numPUs(), here.physicalMemory(), here.maxTaskPar.
+
+~~~
+config const n = 8;
+const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory on a single locale
+forall m in mesh { // go in parallel through all n^2 mesh points
+  writeln((m, m.locale.id, here.id, here.maxTaskPar));
+}
+~~~
+{:.source}
+
+~~~
+((7, 1), 0, 0, 3)
+((1, 1), 0, 0, 3)
+((7, 2), 0, 0, 3)
+((1, 2), 0, 0, 3)
+...
+((6, 6), 0, 0, 3)
+((6, 7), 0, 0, 3)
+((6, 8), 0, 0, 3)
+~~~
+{:.output}
+
+Now we are going to learn two very important properties of Chapel domains. First, domains can be used to
+define arrays of variables of any type on top of them. For example, let us define an n^2 array of real
+numbers on top of `mesh`:
+
+~~~
+config const n = 8;
+const mesh: domain(2) = {1..n, 1..n};  // a 2D domain defined in shared memory on a single locale
+var T: [mesh] real; // a 2D array of reals defined in shared memory on a single locale (mapped onto this domain)
+forall t in T { // go in parallel through all n^2 elements of T
+  writeln((t, t.locale.id));
+}
+~~~
+{:.source}
+
+~~~
+(0.0, 0)
+(0.0, 0)
+(0.0, 0)
+(0.0, 0)
+...
+(0.0, 0)
+(0.0, 0)
+(0.0, 0)
+~~~
+{:.output}
+
+By default, all n^2 array elements are set to zero, and all of them are defined on the same locale as the
+underlying mesh. We can also cycle through all indices of T by accessing its domain:
+
+~~~
+forall idx in T.domain {
+  writeln(idx, ' ', T(idx));   // idx is a tuple (i,j); also print the corresponding array element
+}
+~~~
+{:.source}
+
+~~~
+(7, 1) 0.0
+(1, 1) 0.0
+(7, 2) 0.0
+(1, 2) 0.0
+...
+(6, 6) 0.0
+(6, 7) 0.0
+(6, 8) 0.0
+~~~
+{:.output}
+
+Since we use a paralell `forall` loop, the print statements appear in a random runtime order.
+
+We can also define multiple arrays on the same domain:
+
+~~~
+const grid = {1..100}; // 1D domain
+const alpha = 5; // some number
+var A, B, C: [grid] real; // local real-type arrays on this 1D domain
+B = 2; C = 3;
+forall (a,b,c) in zip(A,B,C) do // parallel loop
+  a = b + alpha*c;   // simple example of data parallelism on a single locale
+writeln(A);
+~~~
+{:.source}
+
+The second important property of Chapel domains is that they can span multiple locales (nodes).
+
+## Distributed domains
+
+Domains are fundamental Chapel concept for distributed-memory data parallelism. 
+
+Let us now define an n^2 distributed (over several locales) domain `distributedMesh` mapped to locales in
 blocks. On top of this domain we define a 2D block-distributed array A of strings mapped to locales in
 exactly the same pattern as the underlying domain. Let's print out
 
@@ -210,12 +317,10 @@ exactly the same pattern as the underlying domain. Let's print out
 (2) here.name = the name of the locale on which the code is running  
 (3) here.maxTaskPar = the number of cores on the locale on which the code is running  
 
-We'll package output into each element of A as a string:  
+Instead of printing these values to the screen, we will store this output inside each element of A as a string:  
 a = "%i".format(int) + string + int  
 is a shortcut for  
 a = "%i".format(int) + string + "%i".format(int)  
-
-Slide: distributed domains.
 
 ~~~
 use BlockDist; // use standard block distribution module to partition the domain into blocks
@@ -231,21 +336,41 @@ writeln(A);
 ~~~~
 {:.source}
 
-Let's try to run this on 1, 2, 4 locales. Here is an example on 4 locales with 1 core/local:
+The syntax `boundingBox=mesh` tells the compiler that the outer edge of our decomposition coincides
+exactly with the outer edge of our domain. Alternatively, the outer decomposition layer could include an
+additional perimeter of "ghost points" if we specify
 
 ~~~
-0-gra796-1   0-gra796-1   0-gra796-1   0-gra796-1   1-gra797-1   1-gra797-1   1-gra797-1   1-gra797-1  
-0-gra796-1   0-gra796-1   0-gra796-1   0-gra796-1   1-gra797-1   1-gra797-1   1-gra797-1   1-gra797-1  
-0-gra796-1   0-gra796-1   0-gra796-1   0-gra796-1   1-gra797-1   1-gra797-1   1-gra797-1   1-gra797-1  
-0-gra796-1   0-gra796-1   0-gra796-1   0-gra796-1   1-gra797-1   1-gra797-1   1-gra797-1   1-gra797-1  
-2-gra798-1   2-gra798-1   2-gra798-1   2-gra798-1   3-gra799-1   3-gra799-1   3-gra799-1   3-gra799-1  
-2-gra798-1   2-gra798-1   2-gra798-1   2-gra798-1   3-gra799-1   3-gra799-1   3-gra799-1   3-gra799-1  
-2-gra798-1   2-gra798-1   2-gra798-1   2-gra798-1   3-gra799-1   3-gra799-1   3-gra799-1   3-gra799-1  
-2-gra798-1   2-gra798-1   2-gra798-1   2-gra798-1   3-gra799-1   3-gra799-1   3-gra799-1   3-gra799-1  
+const mesh: domain(2) = {1..n, 1..n};
+const largerMesh: domain(2) dmapped Block(boundingBox=mesh) = {0..n+1,0..n+1};
+~~~~
+{:.source}
+
+but let's not worry about this for now.
+
+Running our code on four locales with three cores per locale the following output:
+
+~~~
+0-cdr544-3   0-cdr544-3   0-cdr544-3   0-cdr544-3   1-cdr552-3   1-cdr552-3   1-cdr552-3   1-cdr552-3  
+0-cdr544-3   0-cdr544-3   0-cdr544-3   0-cdr544-3   1-cdr552-3   1-cdr552-3   1-cdr552-3   1-cdr552-3  
+0-cdr544-3   0-cdr544-3   0-cdr544-3   0-cdr544-3   1-cdr552-3   1-cdr552-3   1-cdr552-3   1-cdr552-3  
+0-cdr544-3   0-cdr544-3   0-cdr544-3   0-cdr544-3   1-cdr552-3   1-cdr552-3   1-cdr552-3   1-cdr552-3  
+2-cdr556-3   2-cdr556-3   2-cdr556-3   2-cdr556-3   3-cdr692-3   3-cdr692-3   3-cdr692-3   3-cdr692-3  
+2-cdr556-3   2-cdr556-3   2-cdr556-3   2-cdr556-3   3-cdr692-3   3-cdr692-3   3-cdr692-3   3-cdr692-3  
+2-cdr556-3   2-cdr556-3   2-cdr556-3   2-cdr556-3   3-cdr692-3   3-cdr692-3   3-cdr692-3   3-cdr692-3  
+2-cdr556-3   2-cdr556-3   2-cdr556-3   2-cdr556-3   3-cdr692-3   3-cdr692-3   3-cdr692-3   3-cdr692-3  
 ~~~
 {:.output}
 
-Now print the range of indices for each sub-domain by adding the following to our code:
+As we see, the domain `distributedMesh` (along with the string array `A` on top of it) was decomposed
+into 2x2 blocks stored on the four nodes, respectively. Equally important, for each element `a` of the
+array, the line of code filling in that element ran on the same locale where that element was stored. In
+other words, this code ran in parallel (`forall` loop) on four nodes, using up to three cores on each
+node to fill in the corresponding array elements. Once the parallel loop is finished, the `writeln`
+command runs on locale 0 gathering remote elements from other locales and printing them to standard
+output.
+
+Now we can print the range of indices for each sub-domain by adding the following to our code:
 
 ~~~
 for loc in Locales {
@@ -266,20 +391,7 @@ On 4 locales we should get:
 ~~~
 {:.output}
 
-The following checks if the index set owned by a locale can be represented by a single domain:
-
-~~~
-for loc in Locales {
-  on loc {
-    writeln(A.hasSingleLocalSubdomain());
-  }
-}
-~~~
-{:.source}
-
-In our case the answer should be yes.
-
-Let's count the number of threads by adding the following to our code:
+Let us count the number of threads by adding the following to our code:
 
 ~~~
 var counter = 0;
@@ -290,12 +402,23 @@ writeln("actual number of threads = ", counter);
 ~~~
 {:.source}
 
-Does the number make sense? If running on a large number of cores, the result will depend heavily depends
-on n (the size of the domain): for large n=30 will maximize the number of threads on each locale, for
-small n=5 will run a few threads per locale.
+If `n=8` in our code is sufficiently large, there are enough array elements per node (8*8/4 = 16 in our
+case) to fully utilize all three available cores on each node, so our output should be
 
-So far we looked at block distribution. Let's take a look at another standard module to partition the
-domain among locales, called CyclicDist. For each element of the array we will print out again
+~~~
+actual number of threads = 12
+~~~
+{:.output}
+
+Try reducing the array size `n` to see if that changes the output (fewer tasks per locale), e.g., setting
+n=3. Also try increasing the array size to n=20 and study the output. Does the output make sense?
+
+So far we looked at block distribution `BlockDist`. It will distribute a 2D domain among nodes either
+using 1D or 2D decomposition (in our example it was 2D: 2x2), depending on the domain size and the number
+of nodes.
+
+Let us take a look at another standard module to partition the domain among locales, called
+CyclicDist. For each element of the array we will print out again
 
 (1) a.locale.id = the ID of the locale holding the element a of A  
 (2) here.name = the name of the locale on which the code is running  
@@ -315,18 +438,19 @@ writeln(A2);
 {:.source}
 
 ~~~
-0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1  
-2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1  
-0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1  
-2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1  
-0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1  
-2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1  
-0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1   0-gra796-1   1-gra797-1  
-2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1   2-gra798-1   3-gra799-1  
+0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3  
+2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3  
+0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3  
+2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3  
+0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3  
+2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3  
+0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3   0-cdr544-3   1-cdr552-3  
+2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3   2-cdr556-3   3-cdr692-3  
 ~~~
 {:.output}
 
-Again let's print the range of indices for each sub-domain by adding the following to our code:
+As the name `CyclicDist` suggests, the domain was mapped to locales in a cyclic, round-robin pattern. We
+can also print the range of indices for each sub-domain by adding the following to our code:
 
 ~~~
 for loc in Locales {
@@ -345,13 +469,13 @@ for loc in Locales {
 ~~~
 {:.output}
 
-There are quite a few predefined distributions: BlockDist, CyclicDist, BlockCycDist, ReplicatedDist,
-DimensionalDist2D, ReplicatedDim, BlockCycDim - for details see
-http://chapel.cray.com/docs/1.12/modules/distributions.html
+In addition to BlockDist and CyclicDist, Chapel has several other predefined distributions: BlockCycDist,
+ReplicatedDist, DimensionalDist2D, ReplicatedDim, BlockCycDim -- for details please see
+http://chapel.cray.com/docs/1.12/modules/distributions.html.
 
 ## Diffusion solver on distributed domains
 
-Now let's return to our original diffusion solver problem -- show the slide.
+Now let us use distributed domains to write a parallel version of our original diffusion solver code:
 
 ~~~
 use BlockDist;
@@ -360,8 +484,8 @@ const mesh: domain(2) = {1..n, 1..n};  // local 2D n^2 domain
 ~~~
 {:.source}
 
-We will add a larger (n+2)^2 block-distributed domain largerMesh with one-cell-wide "ghost zones" on "end
-locales", and define a temperature array T on top of it, by adding the following to our code:
+We will add a larger (n+2)^2 block-distributed domain `largerMesh` with a layer of "ghost points" on
+"perimeter locales", and define a temperature array T on top of it, by adding the following to our code:
 
 ~~~
 const largerMesh: domain(2) dmapped Block(boundingBox=mesh) = {0..n+1, 0..n+1};
@@ -375,6 +499,9 @@ writeln(T);
 ~~~
 {:.source}
 
+Here we initialized an initial Gaussian temperature peak in the middle of the mesh. As we evolve our
+solution in time, this peak should diffuse slowly over the rest of the domain.
+
 > ## Question
 > Why do we have  
 > forall (i,j) in T.domain[1..n,1..n] {  
@@ -382,11 +509,11 @@ writeln(T);
 > forall (i,j) in mesh
 >> ## Answer
 >> The first one will run on multiple locales in parallel, whereas the
->> second will run in parallel on multiple threads on locale 0 only, since
+>> second will run in parallel via multiple threads on locale 0 only, since
 >> "mesh" is defined on locale 0.
 >> {:.source}
 
-The code above will produce something like this:
+The code above will print the initial temperature distribution:
 
 ~~~
 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0  
@@ -402,7 +529,7 @@ The code above will produce something like this:
 ~~~
 {:.output}
 
-Lets define an array of strings nodeID with the same distribution over locales as T, by adding the
+Let us define an array of strings `nodeID` with the same distribution over locales as T, by adding the
 following to our code:
 
 ~~~
@@ -413,7 +540,7 @@ writeln(nodeID);
 ~~~
 {:.source}
 
-The outer perimeter in the partition below should be "ghost zones":
+The outer perimeter in the partition below are the "ghost points":
 
 ~~~
 0 0 0 0 0 1 1 1 1 1  
@@ -495,37 +622,45 @@ to our code:
 ~~~
 {:.source}
 
-Notice how the total energy decreases in time with the open BCs: energy is leaving the system.
+Notice how the total energy decreases in time with the open BCs, as the energy is leaving the system.
 
 > ## Exercise 5
-> Write a code in which here.id would be different from element.locale.id.
+> Write a code to print how the compute stencil [i,j], [i-1,j], [i+1,j], [i,j-1], [i,j+1] is distributed
+> among nodes, and compare that to the ID of the node where T[i,i] is computed.
 >> ## Solution
 >> Here is one possible solution in which we examine the locality of the finite-difference stencil:
 >> ~~~
->> var nodeID: [largerMesh] string;
+>> var nodeID: [largerMesh] string = 'empty';
 >> forall (i,j) in nodeID.domain[1..n,1..n] do
->>   nodeID[i,j] = "%i".format(here.id) + '-' + nodeID[i,j].locale.id + '-' + nodeID[i-1,j].locale.id + '  ';
+>>   nodeID[i,j] = "%i".format(here.id) + nodeID[i,j].locale.id + nodeID[i-1,j].locale.id +
+>>     nodeID[i+1,j].locale.id + nodeID[i,j-1].locale.id + nodeID[i,j+1].locale.id + '  ';
+>> writeln(nodeID);
 >> ~~~
 
-This produced the following output for me:
+This produced the following output clearly showing the "ghost points" and the stencil distribution for
+each mesh point:
 
 ~~~
-0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
-0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
-0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
-0-0-0   0-0-0   0-0-0   0-0-0   1-1-1   1-1-1   1-1-1   1-1-1  
-2-2-0   2-2-0   2-2-0   2-2-0   3-3-1   3-3-1   3-3-1   3-3-1  
-2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
-2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
-2-2-2   2-2-2   2-2-2   2-2-2   3-3-3   3-3-3   3-3-3   3-3-3  
+empty empty empty empty empty empty empty empty empty empty  
+empty 000000   000000   000000   000001   111101   111111   111111   111111   empty  
+empty 000000   000000   000000   000001   111101   111111   111111   111111   empty  
+empty 000000   000000   000000   000001   111101   111111   111111   111111   empty  
+empty 000200   000200   000200   000201   111301   111311   111311   111311   empty  
+empty 220222   220222   220222   220223   331323   331333   331333   331333   empty  
+empty 222222   222222   222222   222223   333323   333333   333333   333333   empty  
+empty 222222   222222   222222   222223   333323   333333   333333   333333   empty  
+empty 222222   222222   222222   222223   333323   333333   333333   333333   empty  
+empty empty empty empty empty empty empty empty empty empty  
 ~~~
 {:.output}
 
+Note that T[i,j] is always computed on the same node where that element is stored, which makes sense.
+
 ## Periodic boundary conditions
 
-Now let's modify the previous parallel solver to include periodic BCs. At the beginning of each time step
-we need to set elements in the ghost zones to their respective values on the "opposite ends", by adding
-the following to our code:
+Now let us modify the previous parallel solver to include periodic BCs. At the beginning of each time
+step we need to set elements in the ghost zones to their respective values on the "opposite ends", by
+adding the following to our code:
 
 ~~~
   T[0,1..n] = T[n,1..n]; // periodic boundaries on all four sides; these will run via parallel forall
@@ -557,19 +692,9 @@ myWritingChannel.close(); // close the channel
 
 Run the code and check the file *output.dat*: it should contain the array T after 5 steps in ASCII.
 
-<!-- Domain types http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf -->
-
-<!-- http://chapel.cray.com/docs/1.14/primers/primers/distributions.html -->
-<!-- http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf -->
-<!-- builtin Locales variable -->
-<!-- - for loc in Locales {} followed by on loc {} -->
-<!-- - do something on Locales[1] -->
-<!-- become very proficient with regular domains -->
-
-<!-- # Advanced language features -->
-
 # Ideas for future topics or homework
 
 * binary I/O
 * write/read NetCDF from Chapel by calling a C/C++ function
-* take a simple non-linear problem, linearize it, implement a parallel linear solver entirely in Chapel
+* take a simple non-linear problem, linearize it, implement a parallel multi-locale linear solver
+  entirely in Chapel
