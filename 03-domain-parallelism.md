@@ -626,10 +626,10 @@ to our code:
 Notice how the total energy decreases in time with the open BCs, as the energy is leaving the system.
 
 > ## Exercise 5
-> Write a code to print how the compute stencil [i,j], [i-1,j], [i+1,j], [i,j-1], [i,j+1] is distributed
-> among nodes, and compare that to the ID of the node where T[i,i] is computed.
+> Write a code to print how the finite-difference stencil [i,j], [i-1,j], [i+1,j], [i,j-1], [i,j+1] is
+> distributed among nodes, and compare that to the ID of the node where T[i,i] is computed.
 >> ## Solution
->> Here is one possible solution in which we examine the locality of the finite-difference stencil:
+>> Here is one possible solution examining the locality of the finite-difference stencil:
 >> ~~~
 >> var nodeID: [largerMesh] string = 'empty';
 >> forall (i,j) in nodeID.domain[1..n,1..n] do
