@@ -209,9 +209,9 @@ for (x,y) in twoDimensions { // can also cycle using explicit tuples (x,y)
 ~~~
 {:.source}
 
-Let's define an n^2 domain called `mesh`. It is defined by the single task in our code and is therefore
+Let us define an n^2 domain called `mesh`. It is defined by the single task in our code and is therefore
 defined in memory on the same node (locale 0) where this task is running. For each of n^2 mesh points,
-let's print out
+let us print out
 
 (1) m.locale.id = the ID of the locale holding that mesh point (should be 0)  
 (2) here.id = the ID of the locale on which the code is running (should be 0)  
@@ -312,7 +312,7 @@ Domains are fundamental Chapel concept for distributed-memory data parallelism.
 
 Let us now define an n^2 distributed (over several locales) domain `distributedMesh` mapped to locales in
 blocks. On top of this domain we define a 2D block-distributed array A of strings mapped to locales in
-exactly the same pattern as the underlying domain. Let's print out
+exactly the same pattern as the underlying domain. Let us print out
 
 (1) a.locale.id = the ID of the locale holding the element a of A  
 (2) here.name = the name of the locale on which the code is running  
@@ -347,9 +347,9 @@ const largerMesh: domain(2) dmapped Block(boundingBox=mesh) = {0..n+1,0..n+1};
 ~~~~
 {:.source}
 
-but let's not worry about this for now.
+but let us not worry about this for now.
 
-Running our code on four locales with three cores per locale the following output:
+Running our code on four locales with three cores per locale produces the following output:
 
 ~~~
 0-cdr544-3   0-cdr544-3   0-cdr544-3   0-cdr544-3   1-cdr552-3   1-cdr552-3   1-cdr552-3   1-cdr552-3  
@@ -414,11 +414,11 @@ actual number of threads = 12
 Try reducing the array size `n` to see if that changes the output (fewer tasks per locale), e.g., setting
 n=3. Also try increasing the array size to n=20 and study the output. Does the output make sense?
 
-So far we looked at block distribution `BlockDist`. It will distribute a 2D domain among nodes either
-using 1D or 2D decomposition (in our example it was 2D: 2x2), depending on the domain size and the number
-of nodes.
+So far we looked at the block distribution `BlockDist`. It will distribute a 2D domain among nodes either
+using 1D or 2D decomposition (in our example it was 2D decomposition 2x2), depending on the domain size
+and the number of nodes.
 
-Let us take a look at another standard module to partition the domain among locales, called
+Let us take a look at another standard module for domain partitioning onto locales, called
 CyclicDist. For each element of the array we will print out again
 
 (1) a.locale.id = the ID of the locale holding the element a of A  
@@ -611,7 +611,7 @@ for step in 1..5 {
 {:.source}
 
 This is the entire parallel solver! Note that we implemented an open boundary: T on *ghost points* is
-always 0. Let's add some printout and also compute the total energy on the mesh, by adding the following
+always 0. Let us add some printout and also compute the total energy on the mesh, by adding the following
 to our code:
 
 ~~~
@@ -675,7 +675,7 @@ Now total energy should be conserved, as nothing leaves the domain.
 
 # I/O
 
-Let's write the final solution to disk. There are several caveats:
+Let us write the final solution to disk. There are several caveats:
 
 * works only with ASCII
 * Chapel can also write binary data but nothing can read it (checked: not the endians problem!)
