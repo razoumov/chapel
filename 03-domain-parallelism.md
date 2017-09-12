@@ -3,7 +3,7 @@
 So far we have been working with single-locale Chapel codes that may run on one or many cores on a single
 compute node, making use of the shared memory space and accelerating computations by launching concurrent
 tasks on individual cores in parallel. Chapel codes can also run on multiple nodes on a compute
-cluster. In Chapel this is referred to as `multi-locale` execution.
+cluster. In Chapel this is referred to as *multi-locale* execution.
 
 If you work inside a Chapel Docker container, e.g., chapel/chapel-gasnet, the container environment
 simulates a multi-locale cluster, so you would compile and launch multi-locale Chapel codes directly by
@@ -65,7 +65,8 @@ $ srun ./mybinary_real -nl 4   # will run on four locales with max 3 cores per l
 Production jobs would be launched with `sbatch` command and a Slurm launch script as usual.
 
 For the rest of this class we assume that you have a working multi-locale Chapel environment, whether
-provided by a Docker container or by multi-locale Chapel on a physical HPC cluster.
+provided by a Docker container or by multi-locale Chapel on a physical HPC cluster. We will run all
+examples on four nodes with three cores per node.
 
 # Simple multi-locale codes
 
@@ -338,7 +339,7 @@ writeln(A);
 
 The syntax `boundingBox=mesh` tells the compiler that the outer edge of our decomposition coincides
 exactly with the outer edge of our domain. Alternatively, the outer decomposition layer could include an
-additional perimeter of "ghost points" if we specify
+additional perimeter of *ghost points* if we specify
 
 ~~~
 const mesh: domain(2) = {1..n, 1..n};
@@ -484,8 +485,8 @@ const mesh: domain(2) = {1..n, 1..n};  // local 2D n^2 domain
 ~~~
 {:.source}
 
-We will add a larger (n+2)^2 block-distributed domain `largerMesh` with a layer of "ghost points" on
-"perimeter locales", and define a temperature array T on top of it, by adding the following to our code:
+We will add a larger (n+2)^2 block-distributed domain `largerMesh` with a layer of *ghost points* on
+*perimeter locales*, and define a temperature array T on top of it, by adding the following to our code:
 
 ~~~
 const largerMesh: domain(2) dmapped Block(boundingBox=mesh) = {0..n+1, 0..n+1};
@@ -540,7 +541,7 @@ writeln(nodeID);
 ~~~
 {:.source}
 
-The outer perimeter in the partition below are the "ghost points":
+The outer perimeter in the partition below are the *ghost points*:
 
 ~~~
 0 0 0 0 0 1 1 1 1 1  
@@ -609,7 +610,7 @@ for step in 1..5 {
 ~~~
 {:.source}
 
-This is the entire parallel solver! Note that we implemented an open boundary: T in "ghost zones" is
+This is the entire parallel solver! Note that we implemented an open boundary: T on *ghost points* is
 always 0. Let's add some printout and also compute the total energy on the mesh, by adding the following
 to our code:
 
@@ -637,7 +638,7 @@ Notice how the total energy decreases in time with the open BCs, as the energy i
 >> writeln(nodeID);
 >> ~~~
 
-This produced the following output clearly showing the "ghost points" and the stencil distribution for
+This produced the following output clearly showing the *ghost points* and the stencil distribution for
 each mesh point:
 
 ~~~
@@ -659,7 +660,7 @@ Note that T[i,j] is always computed on the same node where that element is store
 ## Periodic boundary conditions
 
 Now let us modify the previous parallel solver to include periodic BCs. At the beginning of each time
-step we need to set elements in the ghost zones to their respective values on the "opposite ends", by
+step we need to set elements on the *ghost points* to their respective values on the *opposite ends*, by
 adding the following to our code:
 
 ~~~
