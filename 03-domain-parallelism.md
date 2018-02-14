@@ -696,6 +696,7 @@ Run the code and check the file *output.dat*: it should contain the array T afte
 # Ideas for future topics or homework
 
 * binary I/O
+  * check https://chapel-lang.org/publications/ParCo-Larrosa.pdf
 * write/read NetCDF from Chapel by calling a C/C++ function
-* take a simple non-linear problem, linearize it, implement a parallel multi-locale linear solver
-  entirely in Chapel
+* advanced: take a simple non-linear problem, linearize it, implement a parallel multi-locale linear
+  solver entirely in Chapel
