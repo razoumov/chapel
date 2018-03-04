@@ -1,4 +1,4 @@
-const pi=3.14159265358979323846;
+const pi = 3.14159265358979323846;
 config const n = 1000;
 
 var h, sum = 0.0, i: int;

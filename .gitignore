@@ -24,3 +24,8 @@ test.chpl
 *.html
 teachingNotes.md
 forall
+atomic
+parallel1
+baseSolver
+parallel2
+chapel20*.csv

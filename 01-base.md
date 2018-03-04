@@ -1,13 +1,26 @@
-Official lessons in https://hpc-carpentry.github.io/hpc-chapel.
+* Official lessons at https://hpc-carpentry.github.io/hpc-chapel.
+* These notes at https://github.com/razoumov/publish/blob/master/01-base.md.
+
+<!-- as productive as Python -->
+<!-- as fast as Fortran -->
+<!-- as portable as C -->
+<!-- as scalabale as MPI -->
+<!-- as fun as your favourite programming language -->
+
+<!-- - lower-level task parallelism: create one task to do this, another task to do this -->
+<!-- - higher-level data parallelism: for all elements in my array, distribute them this way -->
+
+<!-- - library of standard domain maps provided by chapel -->
+<!-- - users can write their own domain maps -->
 
 # Chapel: basic language features
 
 **_Chapel_** is
-- a modern programming language developed by _Cray Inc._
+- a modern, open-source programming language developed at _Cray Inc._
 - simplicity and readability of scripting languages such as Python or Matlab
-- supports high-level abstractions for data and task parallelism
-  - allow users to express parallel codes in a natural, almost intuitive, manner
-  - performance comparable to lower-level compiled languages such as C / C++ / Fortran
+- speed and performance of Fortran and C
+- supports high-level abstractions for data distribution/parallelism, and for task parallelism
+  - allow users to express parallel computations in a natural, almost intuitive, manner
   - can achieve anything you can do with MPI and OpenMP
 - designed around a _multi-resolution_ philosophy: users can incrementally add more detail to their
   original code, to bring it as close to the machine as required
@@ -22,6 +35,7 @@ single-locale Chapel. If you are logged into Cedar or Graham, you'll need to loa
 Chapel module:
 
 ~~~ {.bash}
+$ module spider chapel     # list all Chapel modules
 $ module load gcc chapel-single/1.15.0
 ~~~
 
@@ -51,10 +65,10 @@ Depending on the code, it might utilize one / several / all cores on the current
 implies that you are allowed to utilize all cores. This might not be the case on an HPC cluster, where a
 login node is shared by many people at the same time, and where it might not be a good idea to occupy all
 cores on a login node with CPU-intensive tasks. Therefore, we'll be running test Chapel codes inside
-submitted jobs on compute nodes. We'll start by submitting an interactive job:
+submitted jobs on compute nodes. We'll start by submitting a single-core interactive job:
 
 ~~~ {.bash}
-$ salloc --time=0:30:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
+$ salloc --time=0:30:0 --mem-per-cpu=1000 --account=def-razoumov-ac
 ~~~
 
 and then inside that job compile and run the test code
@@ -75,22 +89,23 @@ plate as a grid of points, and to evaluate the temperature on each point at each
 the following **_finite difference equation_**:
 
 ```
-T[i,j] = 0.25 (Tp[i-1,j] + Tp[i+1,j] + Tp[i,j-1] + Tp[i,j+1])
+Tnew[i,j] = 0.25 * (T[i-1,j] + T[i+1,j] + T[i,j-1] + T[i,j+1])
 ```
 
-- T = temperature at the current iteration
-- Tp = temperature calculated at the past iteration (or the initial conditions at the first iteration)
+- Tnew = new temperature computed at the current iteration
+- T = temperature calculated at the past iteration (or the initial conditions at the first iteration)
 - the indices (i,j) indicate the grid point located at the i-th row and the j-th column
 
 So, our objective is to:
 
 1. Write a code to implement the difference equation above.The code should have the following
    requirements: (a) it should work for any given number of rows and columns in the grid, (b) it should
-   run for a given number of iterations, or until the difference between T and Tp is smaller than a given
-   tolerance value, and (c) it should output the temperature at a desired position on the grid every
-   given number of iterations.
-1. Use task parallelism to improve the performance of the code and run it in the cluster
-1. Use data parallelism to improve the performance of the code and run it in the cluster.
+   run for a given number of iterations, or until the difference between Tnew and T is smaller than a
+   given tolerance value, and (c) it should output the temperature at a desired position on the grid
+   every given number of iterations.
+1. Use task parallelism to improve the performance of the code and run it on a single cluster node.
+1. Use data parallelism to improve the performance of the code and run it on multiple cluster nodes using
+   hybrid parallelism.
 
 ## Variables
 
@@ -136,7 +151,7 @@ Of course, we can use both, the initial value and the type, when declaring a var
 ~~~
 const tolerance = 0.0001: real;   // temperature difference tolerance
 var count = 0: int;                // the iteration counter
-const nout = 20: int;             // the temperature at (x,y) will be printed every nout interations
+const nout = 20: int;             // the temperature at (iout,jout) will be printed every nout interations
 ~~~
 
 Lets print out our configuration after we set all parameters:
@@ -159,7 +174,7 @@ var Tnew: [0..rows+1,0..cols+1] real;   // newly computed temperatures
 are 2D arrays (matrices) with (`rows + 2`) rows and (`cols + 2`) columns of real numbers, all initialized
 as 0.0. The ranges `0..rows+1` and `0..cols+1` used here, not only define the size and shape of the
 array, they stand for the indices with which we could access particular elements of the array using the
-`[ , ]` notation. For example, `T[0,0]` is the real variable located at the frist row and first column of
+`[ , ]` notation. For example, `T[0,0]` is the real variable located at the first row and first column of
 the array `T`, while `T[3,7]` is the one at the 4th row and 8th column; `T[2,3..15]` access columns 4th
 to 16th of the 3th row of `T`, and `T[0..3,4]` corresponds to the first 4 rows on the 5th column of
 `T`. Similarly, with
@@ -198,11 +213,12 @@ The main loop in our simulation can be programmed using a while statement like t
 ~~~
 delta = tolerance;   // safe initial bet; could also be a large number
 while (count < niter && delta >= tolerance) do {
+  // specify boundary conditions for T
   count += 1;      // increase the iteration counter by one
-  // calculate the new temperatures (Tnew) using the past temperatures (T)
+  Tnew = T;    // will be replaced: calculate Tnew from T
   // update delta, the greatest difference between Tnew and T
   T = Tnew;    // update T once all elements of Tnew are calculated
-  // print the temperature at the desired position if the iteration is multiple of nout
+  // print the temperature at [iout,jout] if the iteration is multiple of nout
 }
 ~~~
 
@@ -281,10 +297,8 @@ We need to iterate both over all rows and all columns in order to access every s
 `Tnew`. This can be done with nested _for_ loops like this
 
 ~~~
-for i in 1..rows do {
-  // do this for row i
-  for j in 1..cols do {
-    // do this for column j, row i
+for i in 1..rows do {   // process row i
+  for j in 1..cols do {   // process column j, row i
     Tnew[i,j] = (T[i-1,j] + T[i+1,j] + T[i,j-1] + T[i,j+1])/4;
   }
 }
@@ -308,7 +322,8 @@ Temperature at iteration 480: 24.8883
 Temperature at iteration 500: 24.8595
 ~~~
 
-As we can see, the temperature in the middle of the plate (position 50,50) is slowly decreasing as the plate is cooling down. 
+As we can see, the temperature in the middle of the plate (position 50,50) is slowly decreasing as the
+plate is cooling down.
 
 > ## Exercise 1
 > What would be the temperature at the top right corner (row 1, column `cols`) of the plate? The border
@@ -317,9 +332,9 @@ As we can see, the temperature in the middle of the plate (position 50,50) is sl
 > temperature at the top right corner.
 >> ## Solution
 >> To see the evolution of the temperature at the top right corner of the plate, we just need to modify
->> `x` and `y`. This corner correspond to the first row (`x=1`) and the last column (`y=cols`) of the
+>> `iout` and `jout`. This corner correspond to the first row (`iout=1`) and the last column (`jout=cols`) of the
 >> plate.
->> ~~~
+>> ~~~ {.bash}
 >> $ chpl baseSolver.chpl -o baseSolver
 >> $ ./baseSolver
 >> ~~~
@@ -341,18 +356,18 @@ As we can see, the temperature in the middle of the plate (position 50,50) is sl
 > conditions. Compile and run your code to see how the temperature is changing now.
 >> ## Solution
 >> To get the linear distribution, the 80 degrees must be divided by the number of rows or columns in our
->> plate. So, the following couple of for loops will give us what we want:
+>> plate. So, the following couple of for loops at the start of time iteration will give us what we want:
 >> ~~~
 >> // boundary conditions
 >> for i in 1..rows do
->>   T[i,cols+1] = i*80.0/rows;
+>>   T[i,cols+1] = i*80.0/rows;   // right side
 >> for j in 1..cols do
->>   T[rows+1,j] = j*80.0/cols;
+>>   T[rows+1,j] = j*80.0/cols;   // bottom side
 >> ~~~
 >> Note that 80 degrees is written as a real
 >> number 80.0. The division of integers in Chapel returns an integer, then, as `rows` and `cols` are
->> integers, we must have 80 as real so that the cocient is not truncated.
->> ~~~
+>> integers, we must have 80 as real so that the result is not truncated.
+>> ~~~ {.bash}
 >> $ chpl baseSolver.chpl -o baseSolver
 >> $ ./baseSolver
 >> ~~~
@@ -386,7 +401,7 @@ As we can see, the temperature in the middle of the plate (position 50,50) is sl
 >> ~~~
 >> Clearly there is no need to keep the difference at every single position in the array, we just need to
 >> update `delta` if we find a greater one.
->> ~~~
+>> ~~~ {.bash}
 >> $ chpl baseSolver.chpl -o baseSolver
 >> $ ./baseSolver
 >> ~~~
@@ -404,7 +419,7 @@ Now, after Exercise 3 we should have a working program to simulate our heat tran
 just print some additional useful information:
 
 ~~~
-writeln('Final temperature at the desired position after ', count, ' iterations is: ', T[iout,jout]);
+writeln('Final temperature at the desired position [', iout, ',', jout, '] after ', count, ' iterations is: ', T[iout,jout]);
 writeln('The largest temperature difference between the last two iterations was: ', delta);
 ~~~
 
@@ -419,7 +434,7 @@ Temperature at iteration 0: 25.0
 Temperature at iteration 20: 2.0859
 ...
 Temperature at iteration 500: 0.823152
-Final temperature at the desired position after 500 iterations is: 0.823152
+Final temperature at the desired position [1,100] after 500 iterations is: 0.823152
 The largest temperature difference between the last two iterations was: 0.0258874
 ~~~
 
@@ -455,13 +470,13 @@ The greatest difference in temperatures between the last two iterations was: 0.0
 ~~~
 
 > ## Exercise 4
-> Make `rows`, `cols`, `nout`, `iout`, `jout`, `tolerance`, `rows` and `cols` configurable variables, and
+> Make `rows`, `cols`, `nout`, `iout`, `jout`, `tolerance` configurable variables, and
 > test the code simulating different configurations. What can you conclude about the performance of the
 > code.
 >
 >> ## Solution
 >> For example, lets use a 650 x 650 grid and observe the evolution of the temperature at the position (200,300) for 10000 iterations or until the difference of temperature between iterations is less than 0.002; also, let's print the temperature every 1000 iterations.
->> ~~~
+>> ~~~ {.bash}
 >> $ chpl --fast baseSolver.chpl -o baseSolver
 >> $ ./baseSolver --rows=650 --cols=650 --iout=200 --jout=300 --niter=10000 --tolerance=0.002 --nout=1000
 >> ~~~
@@ -491,8 +506,6 @@ effect
 ~~~ {.bash}
 $ time ./baseSolver --rows=650 --cols=650 --x=200 --y=300 --niter=10000 --tolerance=0.002 --n=1000
 ~~~
-{:.input}
-
 ~~~
 Working with a matrix 650x650 to 10000 iterations or dT below 0.002
 Temperature at iteration 0: 25.0
@@ -510,9 +523,8 @@ real   0m9.206s
 user   0m9.122s
 sys    0m0.040s
 ~~~
-{:.output}
 
-The real time is what interest us. Our code is taking around 34 seconds from the moment it is called at
+The real time is what interest us. Our code is taking around 9.2 seconds from the moment it is called at
 the command line until it returns. Sometimes, however, it could be useful to take the execution time of
 specific parts of the code. This can be achieved by modifying the code to output the information that we
 need. This process is called **_instrumentation of the code_**.
@@ -533,13 +545,10 @@ while (count < niter && delta >= tolerance) do {
 watch.stop();
 writeln('The simulation took ', watch.elapsed(), ' seconds');
 ~~~
-{:.source}
-
 ~~~ {.bash}
 $ chpl --fast baseSolver.chpl -o baseSolver
 $ ./baseSolver --rows=650 --cols=650 --x=200 --y=300 --niter=10000 --tolerance=0.002 --n=1000
 ~~~
-
 ~~~
 Working with a matrix 650x650 to 10000 iterations or dT below 0.002
 Temperature at iteration 0: 25.0
@@ -555,8 +564,8 @@ Final temperature at the desired position after 7750 iterations is: 24.9671
 The greatest difference in temperatures between the last two iterations was: 0.00199985
 ~~~
 
-> ## Exercise 4.5
+> ## Exercise 5
 > Try recompiling without `--fast` and see how it affects the execution time. If it becomes too slow,
-> try reducing the problem size.
+> try reducing the problem size. What is the speedup factor with `--fast`?
 >> ## Solution
 >> Without `--fast` the calculation will become slower by ~95X.

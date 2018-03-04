@@ -1,4 +1,4 @@
-all: exercise2
+all: parallel2
 test: test.chpl
 	chpl --fast $^ -o $@
 baseSolver: baseSolver.chpl
@@ -19,9 +19,11 @@ sync2: sync2.chpl
 	chpl $^ -o $@
 atomic: atomic.chpl
 	chpl $^ -o $@
-parallel: parallel.chpl
+parallel1: parallel1.chpl
 	chpl --fast $^ -o $@
-chapel:
+parallel2: parallel2.chpl
+	chpl --fast $^ -o $@
+upload:
 	doctoc 01-base.md                 # insert table of contents
 	doctoc 02-task-parallelism.md     # insert table of contents
 	doctoc 03-domain-parallelism.md   # insert table of contents
@@ -29,5 +31,5 @@ chapel:
 	@/bin/cp -f 01-base.md 02-task-parallelism.md 03-domain-parallelism.md ~/Movies/publish
 	@ls -lh ~/Movies/publish/{01-base,02-task-parallelism,03-domain-parallelism}.md
 clean:
-	@/bin/rm -rf *~ test baseSolver begin cobegin coforall exercise1 exercise2
-	@/bin/rm -rf sync1 sync2 atomic parallel *.aux *.nav *.synctex* *.log *.out *.snm
+	@/bin/rm -rf *~ *.aux *.nav *.synctex* *.log *.out *.snm
+	@find . -type f -perm +111 -maxdepth 1 | xargs /bin/rm -rf
