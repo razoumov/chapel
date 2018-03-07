@@ -24,7 +24,7 @@ write(125, 380, u'serial local', size=10)
 write(285, 190, u'parallel local', size=10)
 write(430, 190, u'parallel distributed', size=10)
 
-context.set_source_rgb(0.5,0.5,0.5)
+context.set_source_rgb(0.6,0.6,0.6)
 context.set_line_width(2)
 context.move_to(70,450); context.line_to(70,50); context.stroke()   # vertical axis
 for i in range(2):
@@ -47,12 +47,12 @@ write(420, 470, u'  many cores')
 write(420, 490, u'multiple nodes')
 
 context.set_source_rgb(0.6,0,0)
-write(570, 275-50, u'Also data locality: each')
-write(570, 300-50, u'of these tasks could be')
-write(570, 325-50, u'using variables')
-write(570, 360-50, u' - in local memory or')
-write(570, 395-50, u' - in memory on other')
-write(570, 420-50, u'     compute nodes')
+write(590, 275-60, u'Also DATA LOCALITY:', size=18)
+write(590, 300-60, u'each of these tasks', size=18)
+write(590, 325-60, u'could be using variables', size=18)
+write(590, 350-60, u' - in local memory or', size=18)
+write(590, 375-60, u' - in memory on other', size=18)
+write(590, 400-60, u'     compute nodes', size=18)
 
 context.set_source_rgb(0,0,0)
 context.rotate(-pi/2)

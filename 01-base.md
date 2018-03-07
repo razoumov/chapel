@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Chapel: basic language features](#chapel-basic-language-features)
+    - [Running Chapel codes](#running-chapel-codes)
+    - [Case study: solving the **_Heat transfer_** problem](#case-study-solving-the-_heat-transfer_-problem)
+  - [Variables](#variables)
+  - [Ranges and Arrays](#ranges-and-arrays)
+  - [Conditional statements](#conditional-statements)
+  - [Structured iterations with for-loops](#structured-iterations-with-for-loops)
+  - [Using command line arguments](#using-command-line-arguments)
+  - [Timing the execution of code in Chapel](#timing-the-execution-of-code-in-chapel)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 * Official lessons at https://hpc-carpentry.github.io/hpc-chapel.
 * These notes at https://github.com/razoumov/publish/blob/master/01-base.md.
 
