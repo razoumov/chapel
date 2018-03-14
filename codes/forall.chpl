@@ -1,5 +1,5 @@
 var counter = 0;
-forall i in 1..1000 with (+ reduce counter) { // go in parallel through all n^2 elements
-  counter += i;
+forall i in 1..1000 with (+ reduce counter) { // go in parallel through all 1000 numbers
+  counter = +i;
 }
-writeln("counter = ", counter);
+writeln("actual number of threads = ", counter);

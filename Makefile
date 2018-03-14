@@ -1,6 +1,6 @@
-all: parallel2
+all: test
 test: test.chpl
-	chpl --fast $^ -o $@
+	chpl $^ -o $@
 baseSolver: baseSolver.chpl
 	chpl --fast $^ -o $@
 begin: begin.chpl
@@ -8,6 +8,8 @@ begin: begin.chpl
 cobegin: cobegin.chpl
 	chpl $^ -o $@
 coforall: coforall.chpl
+	chpl $^ -o $@
+forall: forall.chpl
 	chpl $^ -o $@
 exercise1: exercise1.chpl
 	chpl $^ -o $@
@@ -22,6 +24,8 @@ atomic: atomic.chpl
 parallel1: parallel1.chpl
 	chpl --fast $^ -o $@
 parallel2: parallel2.chpl
+	chpl --fast $^ -o $@
+parallel3: parallel3.chpl
 	chpl --fast $^ -o $@
 upload:
 	doctoc 01-base.md                 # insert table of contents

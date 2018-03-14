@@ -9,8 +9,6 @@
   - [Fire-and-forget tasks](#fire-and-forget-tasks)
   - [Synchronization of tasks](#synchronization-of-tasks)
   - [Parallelizing the heat transfer equation](#parallelizing-the-heat-transfer-equation)
-- [We paused here](#we-paused-here)
-- [Why did parallel1.chpl perform so purely compared to baseSolver.chpl?](#why-did-parallel1chpl-perform-so-purely-compared-to-basesolverchpl)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -26,7 +24,7 @@
   _jout_, _tolerance_, _nout_
 * we ran the benchmark solution to convergence after 7750 iterations
 ~~~
-$ ./baseSolver--rows=650 --cols=650 --iout=200 --jout=300 --niter=10000 --tolerance=0.002 --nout=1000
+$ ./baseSolver --rows=650 --cols=650 --iout=200 --jout=300 --niter=10000 --tolerance=0.002 --nout=1000
 ~~~
 * we learned how to time individual sections of the code
 * we saw that --fast flag sped up calculation by ~100X
@@ -612,10 +610,10 @@ coforall taskid in 0..coltasks*rowtasks-1 do {
   var row1, row2, col1, col2: int;
   row1 = taskid/coltasks*nr + 1;
   row2 = taskid/coltasks*nr + nr;
-  if taskid/coltasks + 1 == rowtasks then row2 += rr; // add rr rows to the last row of tasks
+  if rr > 0 then row2 += rr; // add rr rows to the last row of tasks
   col1 = taskid%coltasks*nc + 1;
   col2 = taskid%coltasks*nc + nc;
-  if taskid%coltasks + 1 == coltasks then col2 += rc; // add rc columns to the last column of tasks
+  if rc > 0 then col2 += rc; // add rc columns to the last column of tasks
   writeln('task ', taskid, ': rows ', row1, '-', row2, ' and columns ', col1, '-', col2);
 }
 ~~~
@@ -666,10 +664,10 @@ $ diff baseSolver.chpl parallel1.chpl
 >     var row1, row2, col1, col2: int;
 >     row1 = taskid/coltasks*nr + 1;
 >     row2 = taskid/coltasks*nr + nr;
->     if taskid/coltasks + 1 == rowtasks then row2 += rr; // add rr rows to the last row of tasks
+>     if rr > 0 then row2 += rr; // add rr rows to the last row of tasks
 >     col1 = taskid%coltasks*nc + 1;
 >     col2 = taskid%coltasks*nc + nc;
->     if taskid%coltasks + 1 == coltasks then col2 += rc; // add rc columns to the last column of tasks
+>     if rc > 0 then col2 += rc; // add rc columns to the last column of tasks
 >     for i in row1..row2 do {
 >       for j in col1..col2 do {
 >         Tnew[i,j] = 0.25 * (T[i-1,j] + T[i+1,j] + T[i,j-1] + T[i,j+1]);
@@ -726,9 +724,6 @@ The simulation took 25.106 seconds
 Both ran to 7750 iterations, with the same numerical results, but the parallel code is nearly 3X slower
 -- that's terrible!
 
-# We paused here
-# Why did parallel1.chpl perform so purely compared to baseSolver.chpl?
-
 > ## Discussion
 > What happened!?...
 
@@ -753,10 +748,10 @@ following changes:
     var row1, row2, col1, col2: int;
     row1 = taskid/coltasks*nr + 1;
     row2 = taskid/coltasks*nr + nr;
-    if taskid/coltasks + 1 == rowtasks then row2 += rr; // add rr rows to the last row of tasks
+    if rr > 0 then row2 += rr; // add rr rows to the last row of tasks
     col1 = taskid%coltasks*nc + 1;
     col2 = taskid%coltasks*nc + nc;
-    if taskid%coltasks + 1 == coltasks then col2 += rc; // add rc columns to the last column of tasks
+    if rc > 0 then col2 += rc; // add rc columns to the last column of tasks
 ~~~
 
 and the corresponding closing bracket `}` of this `coforall` loop outside the `while` loop, so that
@@ -876,7 +871,7 @@ var arrayDelta: [0..coltasks*rowtasks-1] real;
 ...
     if taskid == 0 then {        // compute delta right after lock1.waitFor()
       delta.write(max reduce arrayDelta);
-      if count%nout == 0 then writeln('Temperature at iteration ', count, ': ', T[iout,jout]);
+      if count%nout == 0 then writeln('Temperature at iteration ', count, ': ', Tnew[iout,jout]);
     }
 ~~~
 	

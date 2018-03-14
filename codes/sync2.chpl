@@ -1,15 +1,11 @@
 var x: sync int;
-writeln("this is main task launching a new task");
+writeln('This is the main task launching a new task');
 begin {
   for i in 1..10 do
-    writeln("this is new task working: ", i);
+    writeln('this is the new task working: ', i);
   x = 2;
-  writeln("New task finished");
+  writeln('New task finished');
 }
-
-writeln("this is main task after launching new task ... I will wait until  it is done");
-//x;
-var a = x; writeln(a);
-x = 10;
-a = x; writeln(a);
-writeln("and now it is done");
+writeln('this is the main task after launching new task .. wait until x is full');
+x;    // read x, but don't do anything with it
+writeln('and now it is done');

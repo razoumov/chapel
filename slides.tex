@@ -200,6 +200,8 @@
         \item periodic boundary conditions
         \item writing to files
       \end{itemize}}
+      \smallskip{\scriptsize \tc{RawSienna}{collaborative
+          notes\\\vspace{-1.5mm}\url{http://bit.ly/chapelthree}}}
     \end{block}
   \end{columns}
 \end{frame}
@@ -282,14 +284,22 @@
   \end{center}
 \end{frame}
 
+\begin{frame}{Data-parallel exercise: compute $\pi$ with \texttt{forall} loop}
+  Write a parallel Chapel code to compute $\pi$ by calculating the integral numerically through summation
+  {\Large
+    \[
+    \pi=\int_0^1{4\,dx\over 1+x^2}
+    \]}
+\end{frame}
+
 \begin{frame}{Parallelism cheatsheet}
   {\let\normalsize\footnotesize \normalsize
     \begin{itemize}\setlength{\itemsep}{0.3mm}
     \item \tc{Mahogany}{\texttt{for}} is a serial loop; \quad\tc{Mahogany}{\texttt{a..\#n}} means n
       iterations, \quad\tc{Mahogany}{\texttt{a..b}} means b-a+1 iterations
     \item \tc{Mahogany}{\texttt{forall}} loop is executed cooperatively by all local cores in parallel,
-      or by remote locales that own the corresponding indices (subdividing their local iterations among
-      their local cores); number of threads is equal to the number of available cores
+      or by remote locales that own the corresponding indices/elements (subdividing their local
+      iterations among their local cores); number of threads scales to the number of available cores
     \item \tc{Mahogany}{\texttt{coforall}} loop creates a new task per each iteration (cycling through
       locales or tasks inside a locale)
     \item \tc{Mahogany}{\texttt{begin \{ ... \}}} spins statements inside off into a new task
