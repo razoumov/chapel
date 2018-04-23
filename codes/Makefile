@@ -10,9 +10,11 @@ hello: hello6-taskpar-dist.chpl
 	chpl -o $@ $^
 locality: locality.chpl
 	chpl -o $@ $^
+probeLocales: probeLocales.chpl
+	chpl -o $@ $^
 pi: pi.chpl
 	chpl -o $@ $^
 clean:
-	@/bin/rm -rf *~ *.o
+	@/bin/rm -rf *~ *.o core.*
 	@find . -maxdepth 1 -type f -executable -exec rm {} +
-#	@find . -type f -perm +111 | xargs /bin/rm -rf
+	@find . -type f -perm u=x | xargs /bin/rm -rf
