@@ -1,19 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Data parallelism](#data-parallelism)
-- [Multi-local Chapel setup](#multi-local-chapel-setup)
-- [Simple multi-locale codes](#simple-multi-locale-codes)
-- [Data parallelism](#data-parallelism-1)
-  - [Domains and single-locale data parallelism](#domains-and-single-locale-data-parallelism)
-  - [Distributed domains](#distributed-domains)
-  - [Heat transfer solver on distributed domains](#heat-transfer-solver-on-distributed-domains)
-- [I/O](#io)
-- [Ideas for future topics](#ideas-for-future-topics)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 * Official lessons at https://hpc-carpentry.github.io/hpc-chapel.
 * These notes at https://github.com/razoumov/publish/blob/master/03-domain-parallelism.md
 
@@ -209,6 +193,16 @@ $ echo $SLURM_NODELIST          # print the list of nodes (should be four)
 $ echo $SLURM_CPUS_PER_TASK     # print the number of cores per node (3)
 $ export HFI_NO_CPUAFFINITY=1   # to enable parallelism on each locale with OmniPath drivers
 $ export CHPL_RT_NUM_THREADS_PER_LOCALE=$SLURM_CPUS_PER_TASK   # to limit the number of tasks
+~~~
+
+**Note**: On Graham currently there is no good Chapel installed centrally, so you'll have to load it from
+AR's home directory:
+
+~~~ {.bash}
+$ . /home/razoumov/startMultiLocale.sh
+$ salloc --time=2:00:0 --nodes=4 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
+$ echo $SLURM_NODELIST          # print the list of nodes (should be four)
+$ echo $SLURM_CPUS_PER_TASK     # print the number of cores per node (3)
 ~~~
 
 <!-- Check: without `CHPL_RT_NUM_THREADS_PER_LOCALE`, will 32 tasks run on separate 32 cores -->
