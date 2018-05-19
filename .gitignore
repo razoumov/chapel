@@ -22,7 +22,7 @@ locality
 output.dat
 test.chpl
 *.html
-teachingNotes.md
+teachingNotes.md.gz
 forall
 atomic
 parallel1
@@ -30,3 +30,4 @@ baseSolver
 parallel2
 chapel20*.csv
 crayNotes
+auto

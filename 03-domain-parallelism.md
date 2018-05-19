@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Data parallelism](#data-parallelism)
+- [Multi-local Chapel setup](#multi-local-chapel-setup)
+- [Simple multi-locale codes](#simple-multi-locale-codes)
+- [Data parallelism](#data-parallelism-1)
+  - [Domains and single-locale data parallelism](#domains-and-single-locale-data-parallelism)
+  - [Distributed domains](#distributed-domains)
+  - [Heat transfer solver on distributed domains](#heat-transfer-solver-on-distributed-domains)
+- [I/O](#io)
+- [Ideas for future topics](#ideas-for-future-topics)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 * Official lessons at https://hpc-carpentry.github.io/hpc-chapel.
 * These notes at https://github.com/razoumov/publish/blob/master/03-domain-parallelism.md
 
@@ -50,7 +66,7 @@ writeln('count = ', count);
 ~~~ {.bash}
 $ module load gcc chapel-single/1.15.0
 $ salloc --time=2:00:0 --ntasks=1 --cpus-per-task=3 --mem-per-cpu=1000 \
-         --account=def-razoumov-ac --reservation=cc-training_2
+         --account=def-razoumov-ws_cpu --reservation=arazoumov-may17
 $ chpl forall.chpl -o forall
 $ ./forall
 ~~~
@@ -188,7 +204,7 @@ with **3 cores per MPI task** (12 cores per job):
 $ module unload chapel-single
 $ module load chapel-multi-cedar/1.16.0
 $ salloc --time=2:00:0 --nodes=4 --cpus-per-task=3 --mem-per-cpu=1000 \
-         --account=def-razoumov-ac --reservation=cc-training_2
+         --account=def-razoumov-ws_cpu --reservation=arazoumov-may17
 $ echo $SLURM_NODELIST          # print the list of nodes (should be four)
 $ echo $SLURM_CPUS_PER_TASK     # print the number of cores per node (3)
 $ export HFI_NO_CPUAFFINITY=1   # to enable parallelism on each locale with OmniPath drivers
@@ -200,7 +216,8 @@ AR's home directory:
 
 ~~~ {.bash}
 $ . /home/razoumov/startMultiLocale.sh
-$ salloc --time=2:00:0 --nodes=4 --cpus-per-task=3 --mem-per-cpu=1000 --account=def-razoumov-ac
+$ salloc --time=2:00:0 --nodes=4 --cpus-per-task=3 --mem-per-cpu=1000 \
+         --account=def-razoumov-ws_cpu --reservation=arazoumov-may17
 $ echo $SLURM_NODELIST          # print the list of nodes (should be four)
 $ echo $SLURM_CPUS_PER_TASK     # print the number of cores per node (3)
 ~~~
