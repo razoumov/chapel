@@ -145,7 +145,10 @@
         \item \tc{Mahogany}{\texttt{for}} loops
         \item config variables
         \item timing code execution
-      \end{itemize}}
+        \end{itemize}}
+      \begin{center}
+        \href{http://bit.ly/2CDRuxQ}{\tc{Mahogany}{\it See lesson notes}}
+      \end{center}
       % \smallskip{\scriptsize \tc{RawSienna}{collaborative notes\\\vspace{-1.5mm}\url{http://bit.ly/chapelone}}}
     \end{block}
     \column{0.30\textwidth}
@@ -179,7 +182,10 @@
             \item atomic variables
           \end{itemize}}
         \item parallelizing the heat transfer solver
-      \end{itemize}}
+        \end{itemize}}
+      \begin{center}
+        \href{http://bit.ly/2CDHCUS}{\tc{Mahogany}{\it See lesson notes}}
+      \end{center}
       % \smallskip{\scriptsize \tc{RawSienna}{collaborative
       %     notes\\\vspace{-1.5mm}\url{http://bit.ly/chapeltwo}}}
     \end{block}
@@ -199,7 +205,10 @@
         \item heat transfer solver on distributed domains
         \item periodic boundary conditions
         \item writing to files
-      \end{itemize}}
+        \end{itemize}}
+      \begin{center}
+        \href{http://bit.ly/2CC8MLW}{\tc{Mahogany}{\it See lesson notes}}
+      \end{center}
       % \smallskip{\scriptsize \tc{RawSienna}{collaborative
       %     notes\\\vspace{-1.5mm}\url{http://bit.ly/chapelthree}}}
     \end{block}
@@ -344,14 +353,6 @@
   % domain types \url{http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf}
 \end{frame}
 
-\begin{frame}{Workshop notes}
-  \begin{itemize}\setlength{\itemsep}{3mm}
-  \item Serial Chapel \url{https://github.com/razoumov/publish/blob/master/01-base.md}
-  \item Task parallelism \url{https://github.com/razoumov/publish/blob/master/02-task-parallelism.md}
-  \item Data parallelism \url{https://github.com/razoumov/publish/blob/master/03-domain-parallelism.md}
-  \end{itemize}
-\end{frame}
-
 % http://chapel.cray.com/docs/1.14/primers/primers/distributions.html
 % http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf
 % builtin Locales variable
@@ -371,14 +372,3 @@
 % how to call C/C++/Fortran functions from Chapel, especially popular numerical libraries
 
 \end{document}
-
-Use the 2D diffusion problem to show all Chapel features:
-
-part 1:
-a. base language: define T as a 2D array, and compute its elements one by one with nested for loops
-b. Task parallelism 1: substitute for loops with forall loops.
-c. Task parallelism 2: decompose T in sub-matrices and distribute them with a coforall loop
-
-part 2:
-d. Data parallelism: work with T as a matrix, explore mapping its domain with different methods.
-e. Advanced features: Save data of iterations to file, maybe create a customized iterator for the problem ?
