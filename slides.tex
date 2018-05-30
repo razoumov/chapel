@@ -17,6 +17,8 @@
 \usepackage{palatino}      % use palatino as the default font
 \usepackage{listings}   % insert python code into presentation
 \usepackage{multirow}
+\usepackage{soul}   % for strikethroughs
+
 \setbeamercovered{transparent}
 \setbeamertemplate{itemize subitem}[triangle]
 \setbeamertemplate{navigation symbols}{}
@@ -43,6 +45,7 @@
 
 \definecolor{byzantium}{rgb}{0.44, 0.16, 0.39}
 \definecolor{ferrariRed}{rgb}{1.0, 0.11, 0.0}
+\definecolor{arsenic}{rgb}{0.23, 0.27, 0.29}
 
 % tiny-scriptsize-footnotesize-small-normalsize-large-Large-LARGE-huge-Huge
 
@@ -51,7 +54,7 @@
 \title[Chapel workshop]{\LARGE Parallel programming in Chapel}
 \author[]{{\large\sc Alex Razoumov}\\{\small alex.razoumov@westgrid.ca}\\\bigskip {\large\sc Juan
     Zuniga}\\{\small juan.zuniga@usask.ca}}
-\date[spring 2018]{}
+\date[May 2018]{}
 \institute[]{\includegraphics[width=0.40\columnwidth]{./logos/WG-Logo-Jan16}
   \hspace{.65cm}\includegraphics[width=0.30\columnwidth]{./logos/ccLogo}}
 
@@ -122,6 +125,7 @@
 \end{frame}
 
 \begin{frame}{Our workshop}
+  \vspace{-3mm}
   \begin{columns}[]
     \column{0.30\textwidth}
     \setbeamercolor{block body}{bg=orange!10,fg=black}
@@ -181,7 +185,7 @@
             \item sync variables
             \item atomic variables
           \end{itemize}}
-        \item parallelizing the heat transfer solver
+        \item \tc{arsenic}{task-parallelizing the heat transfer solver (if we have time)}
         \end{itemize}}
       \begin{center}
         \href{http://bit.ly/2CDHCUS}{\tc{Mahogany}{\it See lesson notes}}
