@@ -12,8 +12,6 @@ learn.chpl
 logos
 111*
 slides.pdf
-test
-pi
 hidden
 hello
 periodic
@@ -23,3 +21,8 @@ output.dat
 test.chpl
 *.html
 teachingNotes.md
+test
+pi
+domainMaps
+probeLocales
+countCores
