@@ -1,5 +1,5 @@
 %: %.chpl
-	chpl --fast $^ -o $@
+	chpl $^ -o $@
 UNAME := $(shell uname)
 clean:
 	@/bin/rm -rf *~ *.o core.* output.dat

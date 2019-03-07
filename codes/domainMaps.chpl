@@ -1,5 +1,5 @@
 use BlockDist;
-const space = {1..8, 1..8};  // 2D domain space
+const space = {1..8, 1..8};  // 2D domain
 const dom: domain(2) dmapped Block(boundingBox={1..8,1..8}) = space; // 2D domain map with some
 								     // decomposition; on 2-3 locales
 								     // this produces 1D decomposition;
