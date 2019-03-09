@@ -17,5 +17,8 @@ writeln('array = ', T);
 var week = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'}; // 1D domain with string indices is also a set!
 for i in week do   // associative domain elements will be printed in no specific order
   writeln(i, ' ', days.member(i));
+writeln('---');
+for i in week.sorted() do
+  writeln(i, ' ', days.member(i));
 
 writeln({10,10}); // this 1D domain has only one element
