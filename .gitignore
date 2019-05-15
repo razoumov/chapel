@@ -26,6 +26,7 @@ atomic
 parallel1
 baseSolver
 parallel2
+parallel3
 chapel20*.csv
 crayNotes
 auto
