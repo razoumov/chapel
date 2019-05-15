@@ -6,6 +6,7 @@ upload:
 	doctoc 03-domain-parallelism.md   # insert table of contents
 	doctoc 08-seminarVersion.md
 	@/bin/cp -f {01-base,02-task-parallelism,03-domain-parallelism,08-seminarVersion}.md ~/Movies/publish
+	@/bin/cp -f slides.pdf ~/Movies/publish/chapel.pdf
 	@ls -lh ~/Movies/publish/{01-base,02-task-parallelism,03-domain-parallelism,08-seminarVersion}.md
 n1 = 01-base
 n2 = 02-task-parallelism

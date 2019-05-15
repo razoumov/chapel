@@ -1,5 +1,5 @@
-// Chapel's associative domains are similar to Python's dictionaries. Today, associative domains cannot
-// be distributed across multiple locales. However, a prototype domain map for this exists.
+// Chapel's associative domains are similar to Python's dictionaries. Starting with 1.19, associative
+// domains can be distributed across multiple locales.
 
 var A: domain(int);     // a domain (set) whose indices are integers
 var days: domain(string);  // a domain (set) whose indices are strings

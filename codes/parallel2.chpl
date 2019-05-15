@@ -54,11 +54,11 @@ coforall taskid in 0..coltasks*rowtasks-1 do {
     lock1.add(1);
     lock1.waitFor(coltasks*rowtasks*count);
     //    delta = max reduce abs(Tnew[1..rows,1..cols]-T[1..rows,1..cols]);
+    T[row1..row2,col1..col2] = Tnew[row1..row2,col1..col2];   // update T once all elements for Tnew are computed
     if taskid == 0 then {
       delta.write(max reduce arrayDelta);
-      if count%nout == 0 then writeln('Temperature at iteration ', count, ': ', Tnew[iout,jout]);
+      if count%nout == 0 then writeln('Temperature at iteration ', count, ': ', T[iout,jout]);
     }
-    T[row1..row2,col1..col2] = Tnew[row1..row2,col1..col2];   // update T once all elements for Tnew are computed
     lock2.add(1);
     lock2.waitFor(coltasks*rowtasks*count);
   }
