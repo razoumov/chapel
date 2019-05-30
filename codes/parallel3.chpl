@@ -27,8 +27,8 @@ while (count < niter && delta >= tolerance) do {
   delta = max reduce abs(Tnew[1..rows,1..cols]-T[1..rows,1..cols]);
   T[1..rows,1..cols] = Tnew[1..rows,1..cols];
   var total = 0.0;
-  forall (i,j) in largerMesh[1..rows,1..cols] with (+ reduce total) do
-    total += T[i,j];
+  //forall (i,j) in largerMesh[1..rows,1..cols] with (+ reduce total) do
+  //  total += T[i,j];
   if count%nout == 0 then writeln('Temperature at iteration ', count, ': ', T[iout,jout], '   ', total);
   //  writeln(message);
   //  assert(1>2);
