@@ -46,6 +46,7 @@
 \definecolor{byzantium}{rgb}{0.44, 0.16, 0.39}
 \definecolor{ferrariRed}{rgb}{1.0, 0.11, 0.0}
 \definecolor{arsenic}{rgb}{0.23, 0.27, 0.29}
+\definecolor{almond}{rgb}{0.94, 0.87, 0.8}
 
 % https://transfer.sh/CR1IP/slides.pdf
 % res=wgssubc-wr_cpu && acc=wgssubc-wa_cpu        # cdr[318-320,327,330-335] and gra[641-650]
@@ -56,7 +57,7 @@
 \title[Slides PDF at \url{http://bit.ly/chapeltop}]{\LARGE Parallel programming in Chapel}
 \author[]{{\large\sc Alex Razoumov}\\{\small alex.razoumov@westgrid.ca}\\\bigskip {\large\sc Juan
     Zuniga}\\{\small juan.zuniga@usask.ca}}
-\date[June 2018]{}
+\date[2019 WestGrid summer school]{}
 \institute[]{\includegraphics[width=0.40\columnwidth]{./logos/WG-Logo-Jan16}
   \hspace{.65cm}\includegraphics[width=0.30\columnwidth]{./logos/ccLogo}}
 
@@ -70,34 +71,43 @@
 % concepts in Chapel
 
 \begin{frame}{Why another language? \qquad{\large\url{http://chapel.cray.com}}}
-  \begin{itemize}\setlength{\itemsep}{2mm}
-  \item High-level parallel programming language
-    \smallskip
-    {\let\small\footnotesize \small
-      \begin{itemize}\setlength{\itemsep}{0.5mm}
-      \item ``Python for parallel programming''
-      \item much easier to use and learn than MPI; few lines of Chapel code typically replace tens of lines
-        of MPI code
-      \item abstractions for data distribution/parallelism, task parallelism
-      \item optimization for data-driven placement of subcomputations
-      \item granular (``multi-resolution'') design: can bring closer to machine level if needed
-      \item everything you can do in MPI (and OpenMP!), you should be able to do in Chapel
+  {\let\normalsize\small \normalsize
+    \begin{itemize}\setlength{\itemsep}{2mm}
+    \item High-level parallel programming language
+      \smallskip
+          {\let\small\scriptsize \small
+            \begin{itemize}\setlength{\itemsep}{0.5mm}
+            \item ``Python for parallel programming''
+            \item much easier to use and learn than MPI; few lines of Chapel typically replace tens of lines
+              of MPI code
+            \item abstractions for data distribution/parallelism, task parallelism
+            \item optimization for data-driven placement of subcomputations
+            \item granular (``multi-resolution'') design: can bring closer to machine level if needed
+            \item everything you can do in MPI (and OpenMP!), you should be able to do in Chapel
+          \end{itemize}}
+          % \item Shared- and distributed-memory parallelism built in
+        \item Focus on performance
+          \smallskip
+              {\let\small\scriptsize \small
+                \begin{itemize}\setlength{\itemsep}{1mm}
+                \item compiled language; simple Chapel codes perform as well as optimized C/C++/Fortran code
+                \item reportedly, very complex Chapel codes run at $\sim$70\% performance of a similar well-tuned
+                  MPI code (not bad, but room to improve)
+              \end{itemize}}
+            \item Perfect language for learning parallel programming for beginners
+            \item Open-source: can compile on any Unix-like platform
+              {\let\small\scriptsize \small
+                \begin{itemize}\setlength{\itemsep}{1mm}
+                \item precompiled for MacOS (single-locale via Homebrew)
+                \item Docker image \url{http://dockr.ly/2vJbi06} (simulates a multi-locale environment)
+              \end{itemize}}
+            \item \tc{red}{Fairly small community at the moment: too few people know/use Chapel\\
+              \qquad$\Longleftrightarrow$~ too few libraries}
+              {\let\small\scriptsize \small
+                \begin{itemize}[]\setlength{\itemsep}{1.5mm}
+                \item you {\it can} load functions written in other languages
+                \end{itemize}}
     \end{itemize}}
-  % \item Shared- and distributed-memory parallelism built in
-  \item Focus on performance
-    \smallskip
-    {\let\small\footnotesize \small
-      \begin{itemize}\setlength{\itemsep}{0.5mm}
-      \item compiled language; simple Chapel codes perform as well as optimized C/C++/Fortran code
-      \item reportedly, very complex Chapel codes run at $\sim$70\% performance of a similar well-tuned
-        MPI code (not bad, but room to improve)
-    \end{itemize}}
-  \item Perfect language for learning parallel programming for beginners
-  \item Open-source: can compile on all Unix-like platforms, precompiled for MacOS (single-locale via
-    Homebrew), Docker image \url{http://dockr.ly/2vJbi06} (simulates a multi-locale environment)
-  \item \tc{red}{Fairly small community at the moment: too few people know/use Chapel
-    ~$\Longleftrightarrow$~ too few HPC centers install and promote it}
-  \end{itemize}
 \end{frame}
 
 \begin{frame}{Useful links}
@@ -357,6 +367,26 @@
 \begin{frame}{Distributed domains}
   \includegraphics[width=1.0\columnwidth]{domains.pdf}
   % domain types \url{http://chapel.cray.com/tutorials/ACCU2017/03-DataPar.pdf}
+\end{frame}
+
+\begin{frame}{Unstructured data}
+  \begin{itemize}[]\setlength{\itemsep}{3mm}
+  \item In addition to rectangular domains and arrays, Chapel supports less structured (and more dynamic) data
+    \begin{itemize}[]\setlength{\itemsep}{1mm}
+    \item sparse domains and arrays: can be mapped to locales
+    \item associative domains and arrays: can be mapped to locales as of v1.19
+      \begin{itemize}[]\setlength{\itemsep}{1mm}
+      \item[-] associated domains are similar to Python's sets (unordered, unique indices)
+      \item[-] associated domains with arrays on top are similar to Python's dictionaries
+      \item[-] \texttt{HashedDist} supports custom index mapping to locales
+      \end{itemize}
+    \item opaque domains and arrays: distribution across locales currently not implemented
+    \end{itemize}
+  \item Watch the webinar
+    \href{https://westgrid.github.io/trainingMaterials/programming/\#unstructured}{\tc{Mahogany}{\it
+        ``Computing graphs on an HPC cluster: working with distributed unstructured data in Chapel''}}
+        (2019-Apr-17)
+  \end{itemize}
 \end{frame}
 
 % http://chapel.cray.com/docs/1.14/primers/primers/distributions.html
