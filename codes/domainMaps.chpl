@@ -6,6 +6,6 @@ const dom: domain(2) dmapped Block(boundingBox={1..8,1..8}) = space; // 2D domai
 								     // on 4 locales - 2D (2x2) decomposition
 var A: [dom] string; // array of integers across domain dom
 forall a in A do { // go through all 64 elements in A
-  a = "%i".format(a.locale.id) + '_' + here.name[1..5] + '_' + here.maxTaskPar + '  ';
+  a = "%i".format(a.locale.id) + '_' + here.name[1..5] + '_' + "%i".format(here.maxTaskPar) + '  ';
  }
 writeln(A);
