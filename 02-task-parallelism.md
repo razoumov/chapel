@@ -2,12 +2,15 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Quick review of the last week's session](#quick-review-of-the-last-weeks-session)
+- [Quick review of the previous session](#quick-review-of-the-previous-session)
 - [Task Parallelism with Chapel](#task-parallelism-with-chapel)
   - [Parallel programming in Chapel](#parallel-programming-in-chapel)
   - [Running on Cedar](#running-on-cedar)
   - [Fire-and-forget tasks](#fire-and-forget-tasks)
   - [Synchronization of tasks](#synchronization-of-tasks)
+    - [`sync` block](#sync-block)
+    - [`sync` variables](#sync-variables)
+    - [atomic variables](#atomic-variables)
   - [Parallelizing the heat transfer equation](#parallelizing-the-heat-transfer-equation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -15,7 +18,7 @@
 * Official lessons at https://hpc-carpentry.github.io/hpc-chapel.
 * These notes at https://github.com/razoumov/publish/blob/master/02-task-parallelism.md
 
-# Quick review of the last week's session
+# Quick review of the previous session
 
 * we wrote the serial version of the 2D heat transfer solver in Chapel `baseSolver.chpl`: initial T=25,
   zero boundary conditions on the left/upper sides, and linearly increasing temperature on the boundary
@@ -105,7 +108,7 @@ If you are working instead on the training VM, please load single-locale Chapel 
 directory:
 
 ~~~ {.bash}
-$ . ~centos/startSingleLocale.sh
+$ . /project/shared/syncHPC/startSingleLocale.sh
 ~~~
 
 In this lesson, we'll be running on several cores on one node with a script `shared.sh`:
@@ -398,6 +401,7 @@ to the particular task.
 >> &nbsp; | &nbsp; ^ &nbsp; min &nbsp; max.
 
 ## Synchronization of tasks
+### `sync` block
 
 The keyword `sync` provides all sorts of mechanisms to synchronize tasks in Chapel. We can simply use
 `sync` to force the _parent task_ to stop and wait until its _spawned child-task_ ends. Consider this
@@ -499,6 +503,8 @@ thread 2: 10
 >> writeln('this message will not appear until all tasks are done...');
 >> ~~~
 
+### `sync` variables
+
 A more elaborated and powerful use of `sync` is as a type qualifier for variables. When a variable is
 declared as _sync_, a state that can be **_full_** or **_empty_** is associated with it.
 
@@ -571,6 +577,8 @@ x.readFF()           // will block until the state of x is full,
 x.writeXF(value)   // will assign the value no matter the state of x, and then set the state as full
 x.readXX()         // will return the value of x regardless its state; the state will remain unchanged
 ~~~
+
+### atomic variables
 
 Chapel also implements **_atomic_** operations with variables declared as `atomic`, and this provides
 another option to synchronize tasks. Atomic operations run *completely independently of any other thread
