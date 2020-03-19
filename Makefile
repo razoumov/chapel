@@ -9,6 +9,8 @@ upload:
 	doctoc $(n3).md
 	@/bin/cp -f {01-base,02-task-parallelism,03-domain-parallelism}.md ~/Movies/publish
 	@/bin/cp -f slides.pdf ~/Movies/publish/chapel.pdf
+	@ls -lh ~/Movies/publish/{01-base,02-task-parallelism,03-domain-parallelism}.md
+epub:
 	#grip $(n1).md --export $(n1).html --title="$(n1)"   # convert md to html
 	#grip $(n2).md --export $(n2).html --title="$(n2)"
 	#grip $(n3).md --export $(n3).html --title="$(n3)"
@@ -16,7 +18,6 @@ upload:
 	# pandoc $(n2).html -o $(n2).epub
 	# pandoc $(n3).html -o $(n3).epub
 	#@/bin/rm {$(n1),$(n2),$(n3)}.html
-	@ls -lh ~/Movies/publish/{01-base,02-task-parallelism,03-domain-parallelism}.md
 	# @ls -l {$(n1),$(n2),$(n3)}.epub
 	# @echo use Calibre to transfer this *.epub to Kindle
 html:
