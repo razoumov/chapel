@@ -1,4 +1,4 @@
-use Memory;
+use Memory.Diagnostics;
 writeln("locale #", here.id, "...");
 writeln("  ...is named: ", here.name);
 writeln("  ...has ", here.numPUs(), " processor cores");

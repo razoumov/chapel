@@ -1,4 +1,4 @@
-use Memory;
+use Memory.Diagnostics;
 for loc in Locales do
   on loc {
     writeln("locale #", here.id, "...");
